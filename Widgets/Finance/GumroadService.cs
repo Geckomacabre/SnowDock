@@ -13,9 +13,9 @@ internal sealed class GumroadService : FinanceService
     {
         "In Gumroad, open Settings › Advanced and create an application (any name; the redirect URI can be http://127.0.0.1).",
         "On the application's page, choose Generate access token.",
-        "Copy the token and paste it below. Gumroad tokens can't be limited, but SnowDock only uses it to read sales (the view_sales scope)."
+        "Copy the token and paste it below. SnowDock only uses it to read sales (the view_sales scope)."
     };
-    public override string NetShort => "after Gumroad's fee, refunds left out";
+    public override string NetShort => "sales minus Gumroad's fee; refunded sales excluded";
     public override string NetLong =>
         "the price of each successful sale minus Gumroad's fee, in US dollars, dated by sale. Refunded and charged-back sales are left out; " +
         "partly refunded ones count in full. Payment processor fees taken outside Gumroad aren't included.";

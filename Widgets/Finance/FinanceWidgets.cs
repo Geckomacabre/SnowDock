@@ -46,7 +46,7 @@ internal sealed class RevenueWidget : AccountWidget<RevenueData>
     protected override RevenueData Sample => _svc.Sample;
     protected override bool CanFetch => KeyStore.Has(Service) && _svc.HasRequired(Field);
 
-    public override double WidthUnits => _chart ? 2.8 : 2;
+    public override double WidthUnits => _chart ? 2.4 : 2;
 
     public override string Title
     {
@@ -86,17 +86,18 @@ internal sealed class RevenueWidget : AccountWidget<RevenueData>
         double labelWidth = r.Width - pad * 2 - (IsSample ? h * 0.62 : 0); // keep clear of the SAMPLE mark
         Label(dc, _svc.Name.ToUpperInvariant() + (_chart ? " · 7D" : ""), new Point(r.X + pad, r.Y + h * 0.1), h * 0.15, p.SubInk, p, labelWidth);
 
+        var bottom = new Point(r.X + pad, r.Y + h * 0.69);
         if (!_chart)
         {
             Label(dc, Charts.Money(d.Last30, d.Currency), new Point(r.X + pad, r.Y + h * 0.29), h * 0.33, p.Ink, p, r.Width - pad * 2);
-            DeltaLine(dc, d.Last30, d.Prev30, d.HasPrev30, "30d", new Point(r.X + pad, r.Y + h * 0.69), h * 0.165, r.Width - pad * 2, p);
+            DeltaLine(dc, d.Last30, d.Prev30, d.CoveredDays, 30, "30d", bottom, h * 0.165, r.Width - pad * 2, p);
             return;
         }
 
-        double textWidth = r.Width * 0.5 - pad;
-        Label(dc, Charts.Money(d.Week, d.Currency), new Point(r.X + pad, r.Y + h * 0.31), h * 0.3, p.Ink, p, textWidth);
-        DeltaLine(dc, d.Week, d.PrevWeek, d.HasPrevWeek, "wk", new Point(r.X + pad, r.Y + h * 0.69), h * 0.165, textWidth, p);
-        var area = new Rect(r.X + r.Width * 0.53, r.Y + h * 0.32, r.Width * 0.47 - pad * 0.8, h * 0.5); // below the label row
+        // Money on the left, the line on the right, and the comparison across the bottom.
+        Label(dc, Charts.Money(d.Week, d.Currency), new Point(r.X + pad, r.Y + h * 0.29), h * 0.3, p.Ink, p, r.Width * 0.5 - pad);
+        DeltaLine(dc, d.Week, d.PrevWeek, d.CoveredDays, 7, "wk", bottom, h * 0.165, r.Width - pad * 2, p);
+        var area = new Rect(r.X + r.Width * 0.53, r.Y + h * 0.3, r.Width * 0.47 - pad * 0.8, h * 0.34);
         DrawWeeks(dc, area, d.Recent(14), p);
     }
 
@@ -119,11 +120,18 @@ internal sealed class RevenueWidget : AccountWidget<RevenueData>
         dc.DrawText(t, new Point(topLeft.X, topLeft.Y + (size - t.Height) / 2 + size * 0.1));
     }
 
-    /// <summary>"▲ 12% vs prior 30d" in green or red, or just the period when there's nothing complete to compare with.</summary>
-    internal static void DeltaLine(DrawingContext dc, double now, double before, bool comparable, string period, Point at, double size,
-        double maxWidth, WidgetPaint p)
+    /// <summary>
+    /// "▲ 12% vs prior 30d" in green or red. When paging stopped early (<paramref name="covered"/> days read, fewer
+    /// than twice the period), it says so instead, in orange if even the headline figure is short.
+    /// </summary>
+    internal static void DeltaLine(DrawingContext dc, double now, double before, int covered, int periodDays, string period, Point at,
+        double size, double maxWidth, WidgetPaint p)
     {
-        if (!comparable) { Label(dc, "last " + period, at, size, p.SubInk, p, maxWidth); return; }
+        if (covered < periodDays * 2)
+        {
+            Label(dc, $"only {covered} days read", at, size, covered < periodDays ? p.Warn : p.SubInk, p, maxWidth);
+            return;
+        }
         var change = Text(FinanceMoney.Change(now, before), size, Charts.DeltaBrush(now, before, p), p, FontWeights.Bold);
         var rest = Text(" vs prior " + period, size, p.SubInk, p, FontWeights.Normal);
         double scale = Math.Min(1, maxWidth / Math.Max(1, change.Width + rest.Width));

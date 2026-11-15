@@ -54,15 +54,18 @@ internal sealed class TotalRevenueWidget : OnlineWidget<TotalData>
         Tile(dc, r, p);
         if (!DrawState(dc, r, p) || Current is not { } t) return;
         double h = r.Height, pad = h * 0.16, inner = r.Width - pad * 2;
-        string label = t.Mixed ? $"TOTAL · {t.Currency} ONLY" : $"TOTAL · {t.Included.Count()} STORE{(t.Included.Count() == 1 ? "" : "S")}";
-        RevenueWidget.Label(dc, label, new Point(r.X + pad, r.Y + h * 0.1), h * 0.15, t.Mixed ? p.Warn : p.SubInk, p,
-            inner - (IsSample ? h * 0.62 : 0));
+        // The label warns when the figure isn't the whole picture; the card says why.
+        string? warning = t.Missing > 0 ? $"TOTAL · {t.Missing} MISSING" : t.Mixed ? $"TOTAL · {t.Currency} ONLY"
+            : t.Covered < 30 ? "TOTAL · PARTIAL" : null;
+        int count = t.Included.Count();
+        RevenueWidget.Label(dc, warning ?? $"TOTAL · {count} STORE{(count == 1 ? "" : "S")}", new Point(r.X + pad, r.Y + h * 0.1), h * 0.15,
+            warning != null ? p.Warn : p.SubInk, p, inner - (IsSample ? h * 0.62 : 0));
         RevenueWidget.Label(dc, Charts.Money(t.Last30, t.Currency), new Point(r.X + pad, r.Y + h * 0.29), h * 0.33, p.Ink, p, inner);
 
         var row = new Point(r.X + pad, r.Y + h * 0.69);
         if (ShownGoal is not double goal)
         {
-            RevenueWidget.DeltaLine(dc, t.Last30, t.Prev30, t.HasPrev30, "30d", row, h * 0.165, inner, p);
+            RevenueWidget.DeltaLine(dc, t.Last30, t.Prev30, t.Covered, 30, "30d", row, h * 0.165, inner, p);
             return;
         }
         // Pace: the bar is the month so far against the goal; the tick and the percentage are the projected month end.
@@ -96,6 +99,9 @@ internal sealed class TotalRevenueWidget : OnlineWidget<TotalData>
                 panel.Children.Add(RevenueCard.Note($"Mixed currencies: the total is in {t.Currency}, the currency of the first connected store. " +
                     "Stores in other currencies are listed but not counted, since there are no exchange rates here: " +
                     string.Join(", ", t.OtherCurrency.Select(s => $"{s.Service.Name} ({s.Data!.Currency})")) + ".", p, p.Warn));
+            if (t.Covered < RevenueData.Days)
+                panel.Children.Add(RevenueCard.Note($"Some stores have too many sales to page through, so only their last {t.Covered} days were read" +
+                    (t.Covered < 30 ? "; the total is short." : "; the comparison is hidden."), p, p.Warn));
             panel.Children.Add(RevenueCard.Note(PaceText(t), p));
         }
 
@@ -137,6 +143,8 @@ internal sealed class TotalRevenueWidget : OnlineWidget<TotalData>
         {
             right.Inlines.Add(new Run(FinanceMoney.Full(d.Last30, d.Currency)) { FontWeight = FontWeights.SemiBold });
             if (d.Currency != t.Currency) right.Inlines.Add(new Run("  not added") { Foreground = p.Warn });
+            if (d.CoveredDays < 30) right.Inlines.Add(new Run($"  only {d.CoveredDays} days read") { Foreground = p.Warn });
+            if (s.Status != null) right.Inlines.Add(new Run($"\nlast good figure ({s.Status})") { Foreground = p.Warn, FontSize = 11 });
         }
         else right.Inlines.Add(new Run(s.Status ?? "no data") { Foreground = p.SubInk });
         DockPanel.SetDock(right, Dock.Right);

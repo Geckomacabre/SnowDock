@@ -20,7 +20,7 @@ internal sealed class ShopifyService : FinanceService
         "Already have a custom app with read_orders and an Admin API access token (shpat_…)? Paste that token instead.",
         "Enter the store's .myshopify.com domain."
     };
-    public override string NetShort => "paid minus refunded";
+    public override string NetShort => "paid minus refunded, tax and shipping included, before Shopify's fees";
     public override string NetLong =>
         "what customers paid for the orders placed each day minus what was refunded on them, in your shop currency (Shopify's net payment). " +
         "Tax and shipping are included and Shopify's fees aren't taken off. Test orders are left out.";
@@ -49,7 +49,7 @@ internal sealed class ShopifyService : FinanceService
         string filter = $"created_at:>='{Iso(b.StartUtc)}'";
         string? cursor = null;
         var oldest = DateTimeOffset.MaxValue;
-        for (int page = 1; ; page++)
+        for (int page = 1, retries = 0; ; )
         {
             // GraphQL Admin API, orders query (newest first, 250 a page); needs read_orders, which reaches the last 60 days.
             // https://shopify.dev/docs/api/admin-graphql/latest/queries/orders
@@ -57,6 +57,12 @@ internal sealed class ShopifyService : FinanceService
             var body = new { query = Query, variables = new { cursor, q = filter } };
             using var doc = await Web.PostJson($"https://{shop}/admin/api/{ApiVersion}/graphql.json", body,
                 r => r.Headers.Add("X-Shopify-Access-Token", token), ct).ConfigureAwait(false);
+            if (Throttled(doc.RootElement) && retries++ < 3)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2 * retries), ct).ConfigureAwait(false); // the bucket refills each second
+                continue;
+            }
+            retries = 0;
             var orders = Data(doc.RootElement).GetProperty("orders");
             foreach (var o in orders.GetProperty("nodes").EnumerateArray())
             {
@@ -69,9 +75,25 @@ internal sealed class ShopifyService : FinanceService
             var info = orders.GetProperty("pageInfo");
             cursor = Str(info, "endCursor");
             if (!Flag(info, "hasNextPage") || cursor.Length == 0) break;
-            if (page >= MaxPages) { b.Truncated(oldest); break; }
+            if (page++ >= MaxPages) { b.Truncated(oldest); break; }
+            await WaitForPoints(doc.RootElement, ct).ConfigureAwait(false);
         }
         return b.Build("USD");
+    }
+
+    // Query cost and the leaky bucket (extensions.cost.throttleStatus, restoreRate in points a second):
+    // https://shopify.dev/docs/apps/build/apis/graphql-admin/rate-limits
+    private static bool Throttled(JsonElement root) =>
+        root.TryGetProperty("errors", out var errors) && errors.ToString().Contains("THROTTLED", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Before the next page, wait until the bucket holds enough points for another query like this one.</summary>
+    private static Task WaitForPoints(JsonElement root, CancellationToken ct)
+    {
+        if (!root.TryGetProperty("extensions", out var ext) || !ext.TryGetProperty("cost", out var cost)
+            || !cost.TryGetProperty("throttleStatus", out var status)) return Task.CompletedTask;
+        double need = Decimal(cost, "requestedQueryCost"), have = Decimal(status, "currentlyAvailable"), rate = Decimal(status, "restoreRate");
+        if (have >= need || rate <= 0) return Task.CompletedTask;
+        return Task.Delay(TimeSpan.FromSeconds(Math.Min(20, (need - have) / rate + 0.5)), ct);
     }
 
     /// <summary>GraphQL reports problems inside a 200 reply.</summary>
@@ -111,7 +133,7 @@ internal sealed class ShopifyService : FinanceService
         }
         catch (WebError e) when (e.Status is System.Net.HttpStatusCode.BadRequest)
         {
-            throw new WebError("Client ID/secret refused, or the app isn't installed on this store", e.Status);
+            throw new WebError("Client ID/secret refused", e.Status); // or the app isn't installed on this store
         }
         using (doc)
         {
@@ -133,7 +155,7 @@ internal sealed class ShopifyService : FinanceService
         s = s.Split('/')[0];
         if (!s.Contains('.')) s += ".myshopify.com";
         if (!Regex.IsMatch(s, @"^[a-z0-9][a-z0-9-]*\.myshopify\.com$"))
-            throw new WebError("Store domain must be your-store.myshopify.com");
+            throw new WebError("Store domain: use *.myshopify.com");
         return s;
     }
 }

@@ -18,7 +18,7 @@ internal sealed class LemonSqueezyService : FinanceService
         "Copy the key (it's only shown once) and paste it below.",
         "To count a single store, enter its numeric store ID; leave it empty to add up every store on the account."
     };
-    public override string NetShort => "order totals less tax and refunds, in USD";
+    public override string NetShort => "order totals less tax and refunds, before Lemon Squeezy's fees, in USD";
     public override string NetLong =>
         "each paid order's total minus tax and minus whatever share of it was refunded, using the US-dollar amounts Lemon Squeezy records, " +
         "dated by when the order was placed. Lemon Squeezy's own fees aren't in its API, so they aren't taken off.";

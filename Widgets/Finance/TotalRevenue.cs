@@ -3,7 +3,7 @@ using SnowDock.Widgets.Online;
 
 namespace SnowDock.Widgets.Finance;
 
-/// <summary>One store in the total: its data, or why it has none.</summary>
+/// <summary>One store in the total: its data, why it has none, or (with both) why the data is the last good one.</summary>
 internal sealed record StoreLine(FinanceService Service, RevenueData? Data, string? Status);
 
 /// <summary>
@@ -19,6 +19,11 @@ internal sealed class TotalData
     public IEnumerable<StoreLine> Included => Stores.Where(s => s.Data?.Currency == Currency);
     public IEnumerable<StoreLine> OtherCurrency => Stores.Where(s => s.Data != null && s.Data.Currency != Currency);
     public bool Mixed => OtherCurrency.Any();
+    /// <summary>Connected stores with nothing to add (failed with no earlier data, or not set up).</summary>
+    public int Missing => Stores.Count(s => s.Data == null && s.Status != Updating);
+    public const string Updating = "updating…";
+    /// <summary>The fewest days any added store could be read for (60 when all are complete).</summary>
+    public int Covered => Included.Select(s => s.Data!.CoveredDays).DefaultIfEmpty(RevenueData.Days).Min();
 
     public double Last30 => Included.Sum(s => s.Data!.Last30);
     public double Prev30 => Included.Sum(s => s.Data!.Prev30);
@@ -49,26 +54,26 @@ internal static class TotalGatherer
     /// <summary>Fetch (or reuse) every connected store. Runs on the thread pool.</summary>
     public static async Task<TotalData> FetchAsync(CancellationToken ct)
     {
-        var pending = new List<(FinanceService Svc, Task<RevenueData>? Task, string? Status)>();
+        var pending = new List<(FinanceService Svc, string Key, IReadOnlyDictionary<string, string> Fields, Task<RevenueData>? Task)>();
         foreach (var svc in FinanceHub.Services)
         {
             if (!KeyStore.Has(svc.Id)) continue;
             var fields = FinanceHub.FieldsFor(svc);
-            pending.Add(svc.HasRequired(fields)
-                ? (svc, FinanceHub.Get(svc, KeyStore.Get(svc.Id) ?? "", fields, ct), null)
-                : (svc, null, $"add the {svc.Name} widget to set up the store"));
+            string key = KeyStore.Get(svc.Id) ?? "";
+            pending.Add((svc, key, fields, svc.HasRequired(fields) ? FinanceHub.Get(svc, key, fields, ct) : null));
         }
         var lines = new List<StoreLine>();
         Exception? first = null;
-        foreach (var (svc, task, status) in pending)
+        foreach (var (svc, key, fields, task) in pending)
         {
-            if (task == null) { lines.Add(new StoreLine(svc, null, status)); continue; }
+            if (task == null) { lines.Add(new StoreLine(svc, null, $"add the {svc.Name} widget to set up the store")); continue; }
             try { lines.Add(new StoreLine(svc, await task.ConfigureAwait(false), null)); }
             catch (OperationCanceledException) { throw; }
             catch (Exception ex)
             {
+                // Keep counting the last good figures (marked in the card) rather than dropping the store.
                 first ??= ex;
-                lines.Add(new StoreLine(svc, null, Web.Friendly(ex)));
+                lines.Add(new StoreLine(svc, FinanceHub.LatestFor(svc, key, fields), Web.Friendly(ex)));
             }
         }
         if (!lines.Any(l => l.Data != null)) throw first ?? new WebError("No store connected");
@@ -88,7 +93,8 @@ internal static class TotalGatherer
             var fields = FinanceHub.FieldsFor(svc);
             var data = svc.HasRequired(fields) ? FinanceHub.LatestFor(svc, KeyStore.Get(svc.Id) ?? "", fields) : null;
             var old = previous?.Stores.FirstOrDefault(s => s.Service == svc);
-            lines.Add(data != null ? new StoreLine(svc, data, null) : new StoreLine(svc, null, old?.Status ?? "updating…"));
+            lines.Add(data != null ? new StoreLine(svc, data, ReferenceEquals(old?.Data, data) ? old?.Status : null)
+                : new StoreLine(svc, null, old?.Status ?? TotalData.Updating));
         }
         return lines.Any(l => l.Data != null) ? TotalData.From(lines) : null;
     }

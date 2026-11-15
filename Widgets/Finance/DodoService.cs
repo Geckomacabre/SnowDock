@@ -12,7 +12,7 @@ internal sealed class DodoService : FinanceService
     public override string[] Steps => new[]
     {
         "In the Dodo Payments dashboard (Live Mode on), open Developer › API Keys and choose Create New Key.",
-        "Name it SnowDock. Where it asks for permissions, give read-only access to balances and nothing else.",
+        "Name it SnowDock and set Balances to Read; leave every other resource at None.",
         "Copy the key (it's shown once, starting dodo_live_) and paste it below. A dodo_test_ key reads test data instead."
     };
     public override string NetShort => "after tax, fees, refunds and disputes";
