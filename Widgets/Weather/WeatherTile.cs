@@ -12,6 +12,7 @@ namespace SnowDock.Widgets.Weather;
 internal abstract class WeatherTile : OnlineWidget<WeatherData>
 {
     private int _seen = -1;
+    private string? _place;
     private string _minute = "";
 
     protected override TimeSpan Interval => TimeSpan.FromMinutes(20);
@@ -30,8 +31,16 @@ internal abstract class WeatherTile : OnlineWidget<WeatherData>
     {
         bool changed = false;
         if (_seen != WeatherSettings.Version) { _seen = WeatherSettings.Version; changed = true; }
-        // The city changed in some tile's card: drop this tile's forecast for the old one.
-        if (Data != null && WeatherSettings.Place is { } place && Data.Key != place.Key) { RefreshSoon(); changed = true; }
+        // The city changed in some tile's card: drop this tile's forecast (or error) for the old one.
+        string? place = WeatherSettings.Place?.Key;
+        if (_place != place)
+        {
+            bool first = _place == null && Data == null && Error == null;
+            _place = place;
+            if (!first) { RefreshSoon(); changed = true; }
+        }
+        // A fetch for the old city that was still running when it changed.
+        else if (Data != null && place != null && Data.Key != place) { RefreshSoon(); changed = true; }
         if (EveryMinute)
         {
             var m = now.ToString("yyyyMMddHHmm") + WidgetEnv.Clock24h;

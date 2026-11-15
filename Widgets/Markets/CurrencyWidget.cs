@@ -64,12 +64,15 @@ internal sealed class CurrencyWidget : OnlineWidget<FxRate>
     public override void Draw(DrawingContext dc, Rect r, WidgetPaint p)
     {
         Tile(dc, r, p);
-        if (!DrawState(dc, r, p)) return;
-        var fx = Shown!;
+        // Before the first reply (and in the picker's preview) the default pair shows a marked sample.
+        bool placeholder = Data == null && Error == null && From == "USD" && To == "EUR";
+        if (!placeholder && !DrawState(dc, r, p)) return;
+        var fx = placeholder ? new FxRate("USD", "EUR", 0.9048, DateTime.Today) : Shown!;
         double h = r.Height, cx = r.X + r.Width / 2, w = r.Width - h * 0.3;
         Centered(dc, $"{AmountText} {fx.From} =", new Point(cx, r.Y + h * 0.24), h * 0.17, p.SubInk, p, w, FontWeights.Normal);
         Centered(dc, $"{Num(Amount * fx.Rate)} {fx.To}", new Point(cx, r.Y + h * 0.52), h * 0.28, p.Ink, p, w);
         Centered(dc, $"ECB · {fx.Date:MMM d}", new Point(cx, r.Y + h * 0.81), h * 0.14, p.SubInk, p, w, FontWeights.Normal);
+        if (placeholder) MarketDraw.SampleBadge(dc, r, p);
     }
 
     public override FrameworkElement BuildCard(WidgetPaint p)

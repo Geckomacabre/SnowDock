@@ -119,10 +119,21 @@ internal static class WeatherGlyphs
     /// <summary>A cloud about <paramref name="w"/> wide, its centre at <paramref name="c"/>.</summary>
     private static void Cloud(DrawingContext dc, Point c, double w, Brush fill, Pen rim)
     {
-        Geometry g = new RectangleGeometry(new Rect(c.X - w * 0.42, c.Y - w * 0.02, w * 0.84, w * 0.26), w * 0.13, w * 0.13);
+        // One frozen outline of width 1, scaled into place (tiles redraw every frame while the dock magnifies).
+        dc.PushTransform(new MatrixTransform(w, 0, 0, w, c.X, c.Y));
+        dc.DrawGeometry(fill, new Pen(rim.Brush, rim.Thickness / w), UnitCloud);
+        dc.Pop();
+    }
+
+    private static readonly Geometry UnitCloud = BuildCloud();
+
+    private static Geometry BuildCloud()
+    {
+        Geometry g = new RectangleGeometry(new Rect(-0.42, -0.02, 0.84, 0.26), 0.13, 0.13);
         foreach (var (x, y, r) in new[] { (-0.2, 0.06, 0.17), (0.04, -0.06, 0.25), (0.25, 0.08, 0.15) })
-            g = Geometry.Combine(g, new EllipseGeometry(new Point(c.X + w * x, c.Y + w * y), w * r, w * r), GeometryCombineMode.Union, null);
-        dc.DrawGeometry(fill, rim, g);
+            g = Geometry.Combine(g, new EllipseGeometry(new Point(x, y), r, r), GeometryCombineMode.Union, null);
+        g.Freeze();
+        return g;
     }
 
     private static void Fall(DrawingContext dc, Point c, double s, Sky sky, WidgetPaint p)

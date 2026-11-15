@@ -60,7 +60,8 @@ internal static class MarketDraw
         var area = new Rect(x + leftW + h * 0.06, r.Y + h * 0.3, Math.Max(4, r.Right - (x + leftW + h * 0.06) - h * 0.16), h * 0.52);
         if (q.Line.Count >= 2)
         {
-            double min = Math.Min(q.Line.Min(), q.Baseline), max = Math.Max(q.Line.Max(), q.Baseline);
+            double min = q.Line.Min(), max = q.Line.Max();
+            if (q.Baseline > 0) { min = Math.Min(min, q.Baseline); max = Math.Max(max, q.Baseline); }
             if (q.Baseline > 0 && max > min)
             {
                 double y = area.Bottom - area.Height * (q.Baseline - min) / (max - min);

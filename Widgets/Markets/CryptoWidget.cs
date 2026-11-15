@@ -57,7 +57,21 @@ internal sealed class CryptoWidget : OnlineWidget<CryptoQuote>
     public override void Draw(DrawingContext dc, Rect r, WidgetPaint p)
     {
         Tile(dc, r, p);
-        if (DrawState(dc, r, p)) MarketDraw.QuoteTile(dc, r, p, Shown!.Point);
+        // Before the first reply (and in the picker's preview) the default pair shows a marked sample.
+        if (Data == null && Error == null && Coin == "BTC" && Quote == "USDT")
+        {
+            MarketDraw.QuoteTile(dc, r, p, Placeholder.Point);
+            MarketDraw.SampleBadge(dc, r, p);
+        }
+        else if (DrawState(dc, r, p)) MarketDraw.QuoteTile(dc, r, p, Shown!.Point);
+    }
+
+    private static readonly CryptoQuote Placeholder = MakePlaceholder();
+
+    private static CryptoQuote MakePlaceholder()
+    {
+        var q = Finnhub.Sample("BTC", 66_480, 66_480, 5);
+        return new CryptoQuote("BTC", "USDT", q.Price, q.ChangePct, q.Open, q.High, q.Low, q.Line);
     }
 
     public override FrameworkElement BuildCard(WidgetPaint p)

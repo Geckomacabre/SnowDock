@@ -76,7 +76,8 @@ internal static class Finnhub
                     if (o > 0) b.Samples.Add(o);
                     b.LastTradeTime = 0;
                 }
-                if (t != b.LastTradeTime) { b.Samples.Add(c); b.LastTradeTime = t; }
+                // A new trade time means a new price; without one, sample every fetch rather than never.
+                if (t <= 0 || t != b.LastTradeTime) { b.Samples.Add(c); b.LastTradeTime = t; }
                 if (b.Samples.Count > 400) b.Samples.RemoveAt(1); // keep the open, thin the oldest samples
                 var q = new StockQuote(symbol, c, Num(r, "d"), Num(r, "dp"), o, Num(r, "h"), Num(r, "l"), pc, at.ToLocalTime(), b.Samples.ToList());
                 b.Last = q;
