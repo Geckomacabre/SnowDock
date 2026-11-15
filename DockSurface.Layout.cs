@@ -49,24 +49,24 @@ internal sealed partial class DockSurface : FrameworkElement
         TrailingExtra = TargetTrailingExtra = 0;
     }
 
+    /// <summary>The era look: background, indicators, labels, and the geometry below.</summary>
+    public Styles.DockStyle Look { get; set; } = Styles.DockStyles.Default;
+
     // ---- geometry (DIPs) ----
-    public double FrontLip => 4;
-    public double FloorDepth => Math.Round(IconSize * 0.48);
     public double Gap => Math.Round(IconSize * 0.12);
     public double SeparatorWidth => Math.Round(IconSize * 0.5);
-    public double ShelfPadding => Math.Round(IconSize * 0.42);
-    public double YFront => CrossLength - FrontLip;
-    public double YBack => YFront - FloorDepth;
-    public double Baseline => YFront - FloorDepth * 0.42;
+    public double ShelfPadding => Look.ShelfPadding(IconSize);
+    /// <summary>Where the bottoms of the icons sit (dock space).</summary>
+    public double Baseline => CrossLength - Look.BaselineInset(IconSize);
 
     /// <summary>Height of the window the dock needs (magnified icons, bounces, labels).</summary>
     public double RequiredHeight =>
-        FrontLip + FloorDepth * 0.42 + Math.Max(MagnifiedSize, IconSize * 1.95) +
+        Look.BaselineInset(IconSize) + Math.Max(MagnifiedSize, IconSize * 1.95) +
         // Side docks put labels beside the icons, so they need room for a whole name across.
-        (IsSide ? 280 : 40);
+        (IsSide ? 280 : 40 + Look.LabelTail);
 
-    /// <summary>Strip to reserve at the bottom of the screen so maximized windows stop above the dock.</summary>
-    public double ReservedHeight => FrontLip + FloorDepth * 0.42 + IconSize + 6;
+    /// <summary>Strip to reserve at the screen edge so maximized windows stop short of the dock.</summary>
+    public double ReservedHeight => Look.BaselineInset(IconSize) + IconSize + Look.TopPadding(IconSize);
 
     // Shelf extents for the current frame.
     public double ShelfLeft { get; private set; }

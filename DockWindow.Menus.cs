@@ -84,6 +84,8 @@ internal sealed partial class DockWindow
             EnsureAnimating();
         });
         Add(menu, _config.AutoHide ? "Turn Hiding Off" : "Turn Hiding On", () => SetAutoHide(!_config.AutoHide));
+        // Opened after this menu has closed, so the two never overlap.
+        Add(menu, $"Dock Style: {_surface.Look.Name}…", () => Dispatcher.BeginInvoke(() => ShowStyleMenu(p)));
         Sep(menu);
         AddPositionItems(menu);
         Sep(menu);
@@ -149,7 +151,11 @@ internal sealed partial class DockWindow
         EnsureAnimating();
     }
 
-    private ContextMenu NewMenu() => new() { Style = (Style)Application.Current.FindResource("DockContextMenu") };
+    /// <summary>A dock menu in the current era's colours (the one place menus pick light or dark).</summary>
+    private ContextMenu NewMenu() => new()
+    {
+        Style = (Style)Application.Current.FindResource(_surface.Look.DarkMenus ? "DockContextMenu" : "DockContextMenuLight")
+    };
 
     private static MenuItem Add(ContextMenu menu, string header, Action onClick, bool enabled = true)
     {
@@ -163,10 +169,38 @@ internal sealed partial class DockWindow
         return mi;
     }
 
-    private static void Sep(ContextMenu menu)
+    private void Sep(ContextMenu menu)
     {
         if (menu.Items.Count == 0 || menu.Items[^1] is Separator) return;
-        menu.Items.Add(new Separator { Style = (Style)Application.Current.FindResource("DockMenuSeparator") });
+        menu.Items.Add(new Separator
+        {
+            Style = (Style)Application.Current.FindResource(_surface.Look.DarkMenus ? "DockMenuSeparator" : "DockMenuSeparatorLight")
+        });
+    }
+
+    /// <summary>The style picker: every era, oldest first, the current one checked.</summary>
+    private void ShowStyleMenu(Point p)
+    {
+        var menu = NewMenu();
+        foreach (var look in Styles.DockStyles.All)
+        {
+            var mi = Add(menu, $"{look.Name}  ({look.Versions})", () => SetLook(look));
+            mi.IsChecked = ReferenceEquals(look, _surface.Look);
+        }
+        PlaceMenu(menu, p.X, _surface.Baseline - _surface.IconSize);
+        ShowMenu(menu);
+    }
+
+    /// <summary>Switch era. The dock's depth can change, so re-reserve the edge and re-place the window.</summary>
+    private void SetLook(Styles.DockStyle look, bool save = true)
+    {
+        _config.Style = look.Id;
+        if (save) _config.Save();
+        _surface.Look = look;
+        UpdateAppBar();
+        PositionWindow();
+        EnsureAnimating();
+        AppPaths.Log($"Style: {look.Id}");
     }
 
     private void Open(ContextMenu menu, DockItem item)

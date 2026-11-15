@@ -48,6 +48,7 @@ internal sealed partial class DockWindow : Window
         _surface.MagnifiedSize = Math.Max(config.IconSize, config.MagnifiedSize);
         _surface.MagnificationEnabled = config.Magnification;
         _surface.Edge = config.Edge;
+        _surface.Look = Styles.DockStyles.Find(config.Style);
         RenderOptions.SetBitmapScalingMode(_surface, BitmapScalingMode.HighQuality);
         Content = _surface;
 

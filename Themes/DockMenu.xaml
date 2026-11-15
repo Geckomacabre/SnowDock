@@ -77,6 +77,76 @@
         <Setter Property="ItemContainerStyle" Value="{StaticResource DockMenuItem}" />
     </Style>
 
+    <!-- Light dock menus, for the eras whose dock menus were light (Aqua, Leopard, Mavericks, light modes). -->
+    <Style x:Key="DockMenuSeparatorLight" TargetType="Separator">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Separator">
+                    <Border Height="1" Margin="0,4" Background="#26000000" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="DockMenuItemLight" TargetType="MenuItem">
+        <Setter Property="Foreground" Value="#FF111111" />
+        <Setter Property="FontFamily" Value="{StaticResource DockFont}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="MenuItem">
+                    <Border x:Name="Bd" Background="Transparent" Padding="18,3,22,4" SnapsToDevicePixels="True">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="14" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="Check" Grid.Column="0" Text="✓" Visibility="Collapsed"
+                                       Margin="-12,0,0,0" Foreground="{TemplateBinding Foreground}" />
+                            <ContentPresenter Grid.Column="1" ContentSource="Header" RecognizesAccessKey="False"
+                                              Margin="-12,0,0,0" />
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Check" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource MenuHighlight}" />
+                            <Setter Property="Foreground" Value="White" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="#80000000" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="DockContextMenuLight" TargetType="ContextMenu">
+        <Setter Property="HasDropShadow" Value="False" />
+        <Setter Property="OverridesDefaultStyle" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContextMenu">
+                    <Grid Margin="10">
+                        <Border CornerRadius="6" Background="#F2F6F6F8" BorderBrush="#40000000" BorderThickness="1"
+                                Padding="0,5">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="12" ShadowDepth="3" Opacity="0.35" />
+                            </Border.Effect>
+                            <ScrollViewer MaxHeight="760" VerticalScrollBarVisibility="Auto" CanContentScroll="False">
+                                <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
+                            </ScrollViewer>
+                        </Border>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="ItemContainerStyle" Value="{StaticResource DockMenuItemLight}" />
+    </Style>
+
     <!-- Thin, dark scroll bar for the grid view and list view. -->
     <Style TargetType="ScrollBar">
         <Setter Property="Width" Value="8" />

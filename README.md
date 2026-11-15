@@ -1,9 +1,9 @@
 # SnowDock
 
-A Mac OS X 10.6–style dock for Windows 11 that replaces the taskbar: a glass shelf in perspective, icon
-reflections, the magnification wave, dark label pills, glowing "running" lights, launch and attention bounces,
-dark dock menus, folder stacks (fan, grid and list), Dock Exposé, drag and drop, auto-hide, and left, bottom or
-right placement.
+A Mac-style dock for Windows 11 that replaces the taskbar, with the look of every Dock from Mac OS X 10.0 to
+macOS 26 (Snow Leopard by default). It has the magnification wave, labels, running-app indicators, launch and
+attention bounces, dock menus, folder stacks (fan, grid and list), Dock Exposé, drag and drop, auto-hide, and
+left, bottom or right placement.
 
 Everything is drawn in code (`DockSurface.Render.cs`). No Apple artwork is included. App icons and thumbnails
 come from Windows and from the apps themselves.
@@ -57,6 +57,36 @@ Hiding the taskbar also hides everything else on it:
 - **The Start button.** The Windows key should still open Start.
 
 Set `"HideTaskbar": false` if you'd rather keep the taskbar and run the dock beside it.
+
+## Styles
+
+Right-click an empty part of the dock and choose **Dock Style…** to switch. The change is immediate and saved.
+Releases that shared a look share a style:
+
+| Style | Releases | Look |
+|---|---|---|
+| Cheetah & Puma | 10.0–10.1 | Pinstriped translucent white bar on the screen edge, black triangles, outlined labels |
+| Jaguar, Panther & Tiger | 10.2–10.4 | The same bar without pinstripes |
+| Leopard | 10.5 | 3D glass shelf with reflections, blue orb indicators, light menus |
+| Snow Leopard & Lion | 10.6–10.7 | The shelf with blue-white dots and dark menus (default) |
+| Mountain Lion | 10.8 | Frosted shelf, fainter reflections, horizontal light-bar indicators |
+| Mavericks | 10.9 | Smokier frosted shelf, light-bar indicators |
+| Yosemite to Catalina | 10.10–10.15 | Flat translucent bar on the edge, small dots, labels with a pointer; light or dark |
+| Big Sur to Sequoia | 11–15 | Floating, rounded, translucent; light or dark |
+| Tahoe | 26 | Liquid Glass: a clear floating slab with a bright rim and sheen; light or dark |
+
+On the left or right, the 3D-shelf styles switch to a flat panel, as those releases did. The other styles keep
+their look on the sides.
+
+**What's approximate:**
+- Everything is drawn in code to resemble each era. No Apple artwork is used.
+- The indicators and overall materials follow published descriptions: triangles in 10.0–10.4, a blue dot in
+  10.5–10.7, a light bar in 10.8–10.9, dots from 10.10 on, Jaguar dropping the pinstripes, Big Sur's floating
+  rounded dock, and Tahoe's Liquid Glass.
+- Label treatments, exact colours and Mavericks' tint are best guesses.
+- The real Docks from Yosemite on blur what's behind them, and Tahoe's glass bends it. A transparent Windows
+  window can't do either, so those styles are tinted instead.
+- Fans, grids, stack lists and Exposé keep the same look in every style.
 
 ## Using it
 
@@ -114,6 +144,7 @@ Downloading or copying a file sets that time, so it works the same way.
 ### The dock menu
 Right-click an empty part of the shelf for:
 - **Magnification** on or off
+- **Dock Style…**: pick an era (see Styles above)
 - **Hiding** on or off: auto-hide slides the dock off the screen edge. Push the mouse against that edge to bring it
   back. While hiding, the dock doesn't reserve screen space.
 - **Position on Left / Bottom / Right**: side docks use the flat 2D look, with labels pointing into the screen.
@@ -137,6 +168,8 @@ live Exposé run. Check these in `--preview` first:
 - [ ] Downloads opens as a fan; switch it to Grid and List from its right-click menu and try each
 - [ ] Drag a file from File Explorer onto an app, onto Downloads, and a folder onto an empty spot
 - [ ] Turn hiding on, then off; move the dock left and right, then back to the bottom; switch displays
+- [ ] Switch through a few Dock Styles (one shelf, one flat, one floating): the dock redraws, menus change between
+      light and dark, and in real mode maximized windows still stop short of it
 - [ ] Then in real mode: the taskbar disappears, maximized windows stop short of the dock, and Win, Win+A and
       Win+N still work
 - [ ] In real mode with Hiding on: pushing the mouse against the bottom edge brings back the dock, not the Windows
@@ -149,6 +182,7 @@ file, restart the dock.
 
 | Setting | Default | |
 |---|---|---|
+| `Style` | `snow-leopard` | `cheetah`, `jaguar`, `leopard`, `snow-leopard`, `mountain-lion`, `mavericks`, `yosemite`, `yosemite-dark`, `big-sur`, `big-sur-dark`, `tahoe`, `tahoe-dark` |
 | `IconSize` | 52 | Icon size at rest (DIPs) |
 | `Magnification` | true | Magnify icons under the mouse |
 | `MagnifiedSize` | 96 | Largest magnified size |
@@ -169,7 +203,9 @@ The log is `%AppData%\SnowDock\snowdock.log`.
 All of these render or plan offscreen. They never move the mouse, and nothing is saved unless noted.
 
 ```
-SnowDock.exe --snapshot out.png [--hover N] [--edge Left|Right] [--hide 0..1] [--dump-icons dir]
+SnowDock.exe --snapshot out.png [--hover N] [--style id] [--backdrop light] [--edge Left|Right] [--hide 0..1] [--dump-icons dir]
+SnowDock.exe --snapshot out.png --menus                     # dark and light dock menus side by side
+SnowDock.exe --snapshot out.txt --switch-test               # switch styles live (not saved), log the window size
 SnowDock.exe --snapshot out.png --drag FROM:TO [--drop]     # --drop really saves the new order
 SnowDock.exe --snapshot out.png --fan K | --grid K | --list K  # the K-th stack (from 0)
 SnowDock.exe --snapshot out.png --expose                    # Exposé layout with placeholders

@@ -12,6 +12,9 @@ namespace SnowDock;
 /// </summary>
 internal sealed partial class DockWindow
 {
+    /// <summary>Snapshots: draw over a bright backdrop instead of the dark one.</summary>
+    public static bool SnapshotLightBackdrop { get; set; }
+
     /// <summary>Set while a snapshot fakes a drag: the frame loop must not read the real mouse and drop it.</summary>
     private bool _syntheticDrag;
 
@@ -64,7 +67,9 @@ internal sealed partial class DockWindow
         var backdrop = new DrawingVisual();
         using (var dc = backdrop.RenderOpen())
         {
-            var sky = new LinearGradientBrush(Color.FromRgb(0x2B, 0x4C, 0x7E), Color.FromRgb(0x8A, 0x6F, 0xA8), 20);
+            var sky = SnapshotLightBackdrop
+                ? new LinearGradientBrush(Color.FromRgb(0xF2, 0xD7, 0xB8), Color.FromRgb(0x9F, 0xC7, 0xE6), 20) // bright, like a daytime wallpaper
+                : new LinearGradientBrush(Color.FromRgb(0x2B, 0x4C, 0x7E), Color.FromRgb(0x8A, 0x6F, 0xA8), 20);
             dc.DrawRectangle(sky, null, new Rect(0, 0, w, h));
         }
 
@@ -202,6 +207,59 @@ internal sealed partial class DockWindow
                 lines.Add($"  gap after [{i,2}]                 -> {gap.Kind}{(gap.Kind == DropKind.Pin ? $" at {gap.InsertIndex}" : "")}");
             }
         }
+        File.WriteAllLines(outFile, lines);
+    }
+
+    /// <summary>Debug: sample dock menus in the dark and light themes, side by side.</summary>
+    public void SaveMenuPreview(string path)
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Background = new SolidColorBrush(Color.FromRgb(0x3A, 0x4A, 0x6A)) };
+        foreach (bool dark in new[] { true, false })
+        {
+            var items = new ItemsControl();
+            var itemStyle = (Style)FindResource(dark ? "DockMenuItem" : "DockMenuItemLight");
+            var sepStyle = (Style)FindResource(dark ? "DockMenuSeparator" : "DockMenuSeparatorLight");
+            items.Items.Add(new MenuItem { Header = "Turn Magnification Off", Style = itemStyle });
+            items.Items.Add(new MenuItem { Header = "Dock Style: Snow Leopard & Lion…", Style = itemStyle });
+            items.Items.Add(new Separator { Style = sepStyle });
+            items.Items.Add(new MenuItem { Header = "Position on Bottom", Style = itemStyle, IsChecked = true });
+            items.Items.Add(new MenuItem { Header = "Quit SnowDock", Style = itemStyle });
+            row.Children.Add(new Border
+            {
+                Margin = new Thickness(20), CornerRadius = new CornerRadius(6), Padding = new Thickness(0, 5, 0, 5), Child = items,
+                Background = new SolidColorBrush(dark ? Color.FromArgb(0xE0, 0x20, 0x20, 0x20) : Color.FromArgb(0xF2, 0xF6, 0xF6, 0xF8)),
+                BorderBrush = new SolidColorBrush(dark ? Color.FromArgb(0x60, 255, 255, 255) : Color.FromArgb(0x40, 0, 0, 0)),
+                BorderThickness = new Thickness(1)
+            });
+        }
+        row.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        row.Arrange(new Rect(row.DesiredSize));
+        row.UpdateLayout();
+        var rtb = new RenderTargetBitmap((int)row.ActualWidth, (int)row.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+        rtb.Render(row);
+        Save(rtb, path);
+    }
+
+    /// <summary>
+    /// Debug: switch from a shelf style to a floating one at runtime (not saved) and log the window's bounds
+    /// before and after, to check it resizes against the screen edge without a gap.
+    /// </summary>
+    public async Task RunStyleSwitchTest(string outFile)
+    {
+        var lines = new List<string>();
+        void Snap(string when)
+        {
+            Native.NativeMethods.GetWindowRect(_hwnd, out var r);
+            var work = TargetMonitor.Work;
+            lines.Add($"{when}: style={_surface.Look.Id} window={r} height={r.Height}px workBottom={work.Bottom} gapToWorkBottom={work.Bottom - r.Bottom}px required={ToPx(_surface.RequiredHeight)}px");
+        }
+        Snap("before");
+        SetLook(Styles.DockStyles.BigSurLight, save: false);
+        await Task.Delay(400);
+        Snap("after big-sur");
+        SetLook(Styles.DockStyles.Cheetah, save: false);
+        await Task.Delay(400);
+        Snap("after cheetah");
         File.WriteAllLines(outFile, lines);
     }
 

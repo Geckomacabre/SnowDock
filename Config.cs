@@ -46,6 +46,9 @@ internal sealed class StackConfig
 
 internal sealed class DockConfig
 {
+    /// <summary>Which era's look to use (see Styles/DockStyles.cs); unknown ids fall back to Snow Leopard.</summary>
+    public string Style { get; set; } = "snow-leopard";
+
     /// <summary>Icon size at rest, in DIPs.</summary>
     public double IconSize { get; set; } = 52;
     public bool Magnification { get; set; } = true;
