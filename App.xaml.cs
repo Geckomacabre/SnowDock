@@ -45,12 +45,33 @@ public partial class App : Application
             return;
         }
 
+        if (args.Contains("--install"))
+        {
+            try { Installer.Install(); }
+            catch (Exception ex) { MessageBox.Show($"Install failed: {ex.Message}", "SnowDock"); }
+            Shutdown();
+            return;
+        }
+        if (args.Contains("--uninstall"))
+        {
+            try { Installer.Uninstall(quiet: args.Contains("--quiet")); }
+            catch (Exception ex) { AppPaths.Log($"Uninstall failed: {ex}"); }
+            Shutdown();
+            return;
+        }
+
         string? snapshot = ArgValue(e.Args, "--snapshot");
         bool preview = args.Contains("--preview") || snapshot != null;
         if (snapshot != null)
         {
             RunSnapshot(snapshot, e.Args);
             return;
+        }
+
+        // Restarting (after install, update, or a display-mode change): let the old copy exit first.
+        if (int.TryParse(ArgValue(e.Args, "--after"), out var oldPid))
+        {
+            try { System.Diagnostics.Process.GetProcessById(oldPid).WaitForExit(15000); } catch { /* already gone */ }
         }
         _singleInstance = new Mutex(true, preview ? @"Local\SnowDock.Preview" : @"Local\SnowDock", out bool first);
         if (!first)
@@ -63,14 +84,66 @@ public partial class App : Application
         AppDomain.CurrentDomain.UnhandledException += (_, ev) =>
         {
             AppPaths.Log($"FATAL: {ev.ExceptionObject}");
-            _dock?.Cleanup();
+            CleanupAll();
         };
-        AppDomain.CurrentDomain.ProcessExit += (_, _) => _dock?.Cleanup();
-        SessionEnding += (_, _) => _dock?.Cleanup();
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => CleanupAll();
+        SessionEnding += (_, _) => CleanupAll();
 
         var config = DockConfig.Load();
-        _dock = new DockWindow(config, preview);
-        _dock.Show();
+        _preview = preview;
+        // Debug: --all-displays tries one dock per display without saving the setting.
+        if (args.Contains("--all-displays")) config.AllDisplays = true;
+        // Debug: --update-check REPO logs what the update checker finds for that repository, then exits.
+        if (ArgValue(e.Args, "--update-check") is string repo)
+        {
+            Updater.Start(repo);
+            _ = Updater.Check().ContinueWith(_ => Dispatcher.Invoke(() =>
+            {
+                AppPaths.Log($"Update check result for {repo}: {(Updater.Available is { } u ? $"{u.Version} zip={u.ZipUrl != null}" : "none")}");
+                Shutdown();
+            }));
+            return;
+        }
+        if (config.AllDisplays)
+        {
+            // One dock per display; the one on the main display owns the taskbar.
+            bool owner = true;
+            foreach (var mon in Monitors.All().OrderByDescending(m => m.IsPrimary))
+            {
+                var dock = new DockWindow(config, preview, mon.DeviceName, ownsTaskbar: owner);
+                owner = false;
+                _docks.Add(dock);
+                dock.Show();
+            }
+        }
+        else
+        {
+            var dock = new DockWindow(config, preview);
+            _docks.Add(dock);
+            dock.Show();
+        }
+        _dock = _docks[0];
+        if (!preview) Updater.Start(config.UpdateRepo);
+    }
+
+    private readonly List<DockWindow> _docks = new();
+    private bool _preview;
+
+    private void CleanupAll()
+    {
+        foreach (var d in _docks) d.Cleanup();
+        _dock?.Cleanup();
+    }
+
+    /// <summary>Start a fresh copy (it waits for this one to exit) and quit: used when the set of docks changes.</summary>
+    public void Restart()
+    {
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Environment.ProcessPath!)
+        {
+            UseShellExecute = false,
+            Arguments = $"--after {Environment.ProcessId}" + (_preview ? " --preview" : "")
+        });
+        Shutdown();
     }
 
     private static string? ArgValue(string[] args, string name)
@@ -151,7 +224,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
-        _dock?.Cleanup();
+        CleanupAll();
         _singleInstance?.Dispose();
         base.OnExit(e);
     }

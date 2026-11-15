@@ -74,6 +74,10 @@ internal sealed class DockConfig
     public List<Widgets.WidgetConfig> Widgets { get; set; } = new();
     /// <summary>24-hour clocks; empty means follow this PC's time format.</summary>
     public bool? Clock24h { get; set; }
+    /// <summary>A dock on every display (each display's taskbar hidden), instead of one on <see cref="Monitor"/>.</summary>
+    public bool AllDisplays { get; set; }
+    /// <summary>GitHub repository whose Releases are checked for updates.</summary>
+    public string UpdateRepo { get; set; } = "Geckomacabre/SnowDock";
 
     private static readonly JsonSerializerOptions Json = new()
     {

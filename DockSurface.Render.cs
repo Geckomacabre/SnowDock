@@ -67,7 +67,29 @@ internal sealed partial class DockSurface
         }
 
         if (Hovered != null && !ReferenceEquals(Hovered, LabelSuppressedFor)) DrawLabel(dc, Hovered);
+        if (UpdatePill != null) DrawUpdatePill(dc);
     }
+
+    /// <summary>"Update to x.y.z" button shown above the dock's right end when a new release is out.</summary>
+    public string? UpdatePill { get; set; }
+    private Rect _updatePillRect = Rect.Empty;
+    private static readonly Brush PillFill = Frozen(new SolidColorBrush(Color.FromRgb(0x3B, 0x8B, 0xF6)));
+
+    private void DrawUpdatePill(DrawingContext dc)
+    {
+        var text = new FormattedText(UpdatePill!, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
+            new Typeface(Widgets.WidgetPaint.Font, FontStyles.Normal, FontWeights.SemiBold, FontStretches.Normal), 12, Brushes.White,
+            VisualTreeHelper.GetDpi(this).PixelsPerDip);
+        double w = text.Width + 22, h = text.Height + 8;
+        var r = new Rect(ShelfRight - w - 6, Baseline - IconSize - Look.TopPadding(IconSize) - h - 6, w, h);
+        _updatePillRect = r;
+        PushUpright(dc, new Point(r.X + w / 2, r.Y + h / 2));
+        dc.DrawRoundedRectangle(PillFill, null, r, h / 2, h / 2);
+        dc.DrawText(text, new Point(r.X + 11, r.Y + 4));
+        dc.Pop();
+    }
+
+    public bool HitsUpdatePill(Point dockPoint) => UpdatePill != null && _updatePillRect.Contains(dockPoint);
 
     /// <summary>The picker is open: widgets show a remove badge.</summary>
     public bool EditMode { get; set; }

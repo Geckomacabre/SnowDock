@@ -28,10 +28,19 @@ internal sealed partial class DockWindow : Window
     private bool _cleanedUp;
     private int _tick;
 
-    public DockWindow(DockConfig config, bool preview)
+    /// <summary>Set when this dock is one of several (one per display): the display it lives on.</summary>
+    private readonly string? _monitorOverride;
+    /// <summary>Only one dock hides and restores the Windows taskbars.</summary>
+    private readonly bool _ownsTaskbar;
+    private readonly int _monitorCountAtStart = Monitors.All().Count;
+
+    public DockWindow(DockConfig config, bool preview, string? monitor = null, bool ownsTaskbar = true)
     {
         _config = config;
         _preview = preview;
+        _monitorOverride = monitor;
+        _ownsTaskbar = ownsTaskbar;
+        Updater.AvailableChanged += () => Dispatcher.BeginInvoke(ShowUpdatePill);
 
         Title = "SnowDock";
         WindowStyle = WindowStyle.None;
@@ -98,17 +107,24 @@ internal sealed partial class DockWindow : Window
 
         PositionWindow();
 
-        if (!_preview && _config.HideTaskbar) _taskbar.Hide();
+        if (!_preview && _config.HideTaskbar && _ownsTaskbar) _taskbar.Hide();
         UpdateAppBar();
         PositionWindow();
-        AppPaths.Log($"Dock started (preview={_preview}, hideTaskbar={_config.HideTaskbar})");
+        GetWindowRect(_hwnd, out var placed);
+        AppPaths.Log($"Dock started (preview={_preview}, hideTaskbar={_config.HideTaskbar}, ownsTaskbar={_ownsTaskbar}) on {TargetMonitor.DeviceName} at {placed}");
     }
 
     private double DpiScale => VisualTreeHelper.GetDpi(this).DpiScaleY;
     private int ToPx(double dip) => (int)Math.Ceiling(dip * DpiScale);
 
     /// <summary>The monitor the dock lives on (chosen by device name; falls back to the primary).</summary>
-    private MonitorDesc TargetMonitor => Monitors.Find(_config.Monitor);
+    private MonitorDesc TargetMonitor => Monitors.Find(_monitorOverride ?? _config.Monitor);
+
+    private void ShowUpdatePill()
+    {
+        _surface.UpdatePill = Updater.Available is { } u ? $"Update to {u.Version}" : null;
+        _surface.InvalidateVisual();
+    }
 
     /// <summary>Reserve screen space only in real mode, when asked to, and not while auto-hiding.</summary>
     private void UpdateAppBar()
@@ -220,6 +236,12 @@ internal sealed partial class DockWindow : Window
         {
             Dispatcher.BeginInvoke(() =>
             {
+                // A display was plugged in or removed while showing a dock on every display: start over.
+                if (_config.AllDisplays && _ownsTaskbar && !_preview && Monitors.All().Count != _monitorCountAtStart)
+                {
+                    ((App)Application.Current).Restart();
+                    return;
+                }
                 UpdateAppBar();
                 PositionWindow();
             });
@@ -294,6 +316,11 @@ internal sealed partial class DockWindow : Window
         }
         ClearPress();
         var p = _surface.ToDock(e.GetPosition(_surface));
+        if (_surface.HitsUpdatePill(p))
+        {
+            _ = Updater.Apply();
+            return;
+        }
         var item = _surface.HitItem(p);
         var pressed = _surface.Pressed;
         _surface.Pressed = null;

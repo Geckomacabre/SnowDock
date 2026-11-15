@@ -109,13 +109,23 @@ internal sealed partial class DockWindow
         var monitors = Monitors.All();
         if (monitors.Count > 1)
         {
-            var current = TargetMonitor.DeviceName;
-            for (int i = 0; i < monitors.Count; i++)
+            // A dock on every display, or one dock on a chosen display.
+            Add(menu, "Show on All Displays", () =>
             {
-                var m = monitors[i];
-                var mi = Add(menu, $"Show on Display {i + 1} ({m.Bounds.Width}×{m.Bounds.Height}{(m.IsPrimary ? ", main" : "")})",
-                    () => MoveToMonitor(m.DeviceName));
-                mi.IsChecked = string.Equals(m.DeviceName, current, StringComparison.OrdinalIgnoreCase);
+                _config.AllDisplays = !_config.AllDisplays;
+                _config.Save();
+                ((App)Application.Current).Restart();
+            }).IsChecked = _config.AllDisplays;
+            if (!_config.AllDisplays)
+            {
+                var current = TargetMonitor.DeviceName;
+                for (int i = 0; i < monitors.Count; i++)
+                {
+                    var m = monitors[i];
+                    var mi = Add(menu, $"Show on Display {i + 1} ({m.Bounds.Width}×{m.Bounds.Height}{(m.IsPrimary ? ", main" : "")})",
+                        () => MoveToMonitor(m.DeviceName));
+                    mi.IsChecked = string.Equals(m.DeviceName, current, StringComparison.OrdinalIgnoreCase);
+                }
             }
             Sep(menu);
         }
@@ -123,6 +133,17 @@ internal sealed partial class DockWindow
         startup.IsChecked = StartupEntry.IsEnabled();
         Add(menu, "Add Folder Stack…", AddStack);
         Add(menu, "Dock Settings…", () => ShellOpen("notepad.exe", $"\"{AppPaths.ConfigFile}\""));
+        Sep(menu);
+        if (Updater.Available is { } update)
+            Add(menu, $"Update to {update.Version}", () => _ = Updater.Apply());
+        else if (!_preview)
+            Add(menu, $"Check for Updates (version {Installer.Version})", () => _ = Updater.Check());
+        if (!Installer.RunningInstalled && !_preview)
+            Add(menu, "Install SnowDock (adds it to Installed Apps)", () =>
+            {
+                try { Installer.Install(); Application.Current.Shutdown(); }
+                catch (Exception ex) { AppPaths.Log($"Install failed: {ex.Message}"); }
+            });
         Sep(menu);
         Add(menu, _preview ? "Quit SnowDock" : "Quit SnowDock and Restore Taskbar",
             () => Application.Current.Shutdown());

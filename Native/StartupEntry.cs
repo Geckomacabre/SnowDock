@@ -17,11 +17,13 @@ internal static class StartupEntry
         return key?.GetValue(ValueName) is string;
     }
 
-    public static void Set(bool enabled)
+    /// <summary>Turn the sign-in entry on (for <paramref name="exe"/>, default this exe) or off.</summary>
+    public static void Set(bool enabled, string? exe = null)
     {
+        exe ??= Environment.ProcessPath;
         using var key = Registry.CurrentUser.CreateSubKey(RunKey);
-        if (enabled) key.SetValue(ValueName, $"\"{Environment.ProcessPath}\"");
+        if (enabled) key.SetValue(ValueName, $"\"{exe}\"");
         else key.DeleteValue(ValueName, throwOnMissingValue: false);
-        AppPaths.Log($"Start at sign-in: {enabled} ({Environment.ProcessPath})");
+        AppPaths.Log($"Start at sign-in: {enabled} ({exe})");
     }
 }
