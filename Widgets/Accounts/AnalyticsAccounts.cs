@@ -99,9 +99,13 @@ internal sealed class PlausibleTile : WeekTile
         using var now = await Query(new { site_id = site, metrics, date_range = new[] { SvcJson.Day(today.AddDays(-6)), SvcJson.Day(today) } });
         using var before = await Query(new { site_id = site, metrics, date_range = new[] { SvcJson.Day(today.AddDays(-13)), SvcJson.Day(today.AddDays(-7)) } });
         using var daily = await Query(new { site_id = site, metrics, date_range = new[] { SvcJson.Day(today.AddDays(-13)), SvcJson.Day(today) }, dimensions = new[] { "time:day" } });
-        var byDay = daily.RootElement.Get("results").Items().ToDictionary(
-            x => x.Get("dimensions").Items().FirstOrDefault().ToString(),
-            x => x.Get("metrics").Items().FirstOrDefault() is { ValueKind: System.Text.Json.JsonValueKind.Number } n ? n.GetDouble() : 0);
+        var byDay = new Dictionary<string, double>();
+        foreach (var x in daily.RootElement.Get("results").Items())
+        {
+            string label = x.Get("dimensions").Items().FirstOrDefault().ToString(); // "2026-11-09" (first 10 chars, in case of a time)
+            if (label.Length >= 10 && x.Get("metrics").Items().FirstOrDefault() is { ValueKind: System.Text.Json.JsonValueKind.Number } n)
+                byDay[label[..10]] = byDay.GetValueOrDefault(label[..10]) + n.GetDouble();
+        }
         var days = Enumerable.Range(0, 14).Select(i => byDay.GetValueOrDefault(SvcJson.Day(today.AddDays(i - 13)))).ToArray();
         return new WeekCompare(First(now), First(before), days);
     }

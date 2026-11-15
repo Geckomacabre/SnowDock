@@ -83,7 +83,12 @@ internal static class GoogleAuth
     /// Run the browser sign-in. Call on the UI thread (it saves the result there). Returns null when connected,
     /// otherwise a short reason. Gives up after five minutes.
     /// </summary>
-    public static async Task<string?> ConnectAsync()
+    public static async Task<string?> ConnectAsync() => LastProblem = await ConnectCore();
+
+    /// <summary>Why the last sign-in failed (null after a good one), so a reopened card can say.</summary>
+    public static string? LastProblem { get; private set; }
+
+    private static async Task<string?> ConnectCore()
     {
         if (ClientId.Length == 0) return "Paste your OAuth client ID first.";
         _flow?.Cancel();
@@ -146,14 +151,24 @@ internal static class GoogleAuth
         _access = null;
     }
 
-    /// <summary>Accept connections on the loopback listener until Google's redirect (with our state) arrives.</summary>
+    /// <summary>
+    /// Accept connections on the loopback listener until Google's redirect (with our state) arrives. Browsers also
+    /// open spare connections that send nothing, ask for /favicon.ico, or close early; those are skipped.
+    /// </summary>
     private static async Task<(string? Code, string? Error)> WaitForRedirect(TcpListener listener, string state, CancellationToken ct)
     {
         while (true)
         {
             using var client = await listener.AcceptTcpClientAsync(ct).ConfigureAwait(false);
             using var stream = client.GetStream();
-            string target = await ReadTarget(stream, ct).ConfigureAwait(false);
+            string target;
+            using (var quick = CancellationTokenSource.CreateLinkedTokenSource(ct))
+            {
+                quick.CancelAfter(TimeSpan.FromSeconds(3));
+                try { target = await ReadTarget(stream, quick.Token).ConfigureAwait(false); }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested) { continue; } // idle connection
+                catch (Exception e) when (e is IOException or SocketException) { continue; }       // went away
+            }
             int qi = target.IndexOf('?');
             var q = (qi >= 0 ? target[(qi + 1)..] : "").Split('&', StringSplitOptions.RemoveEmptyEntries)
                 .Select(kv => kv.Split('=', 2))
@@ -162,8 +177,9 @@ internal static class GoogleAuth
             if (!q.ContainsKey("code") && !q.ContainsKey("error")) { await Reply(stream, "404 Not Found", "Nothing here.", ct); continue; }
             if (q.GetValueOrDefault("state") != state)
             {
+                // Not the sign-in we started (an old tab, or something else on this PC): ignore it and keep waiting.
                 await Reply(stream, "400 Bad Request", "This sign-in doesn't match the one SnowDock started. Start again from the widget's card.", ct);
-                return (null, "The sign-in reply didn't match. Try again.");
+                continue;
             }
             if (q.TryGetValue("error", out var err))
             {
@@ -191,7 +207,14 @@ internal static class GoogleAuth
         return first.Length >= 2 ? first[1] : "";
     }
 
+    /// <summary>Answer the browser. Never fatal: a tab closed early mustn't lose the code we already have.</summary>
     private static async Task Reply(Stream stream, string status, string message, CancellationToken ct)
+    {
+        try { await Write(stream, status, message, ct).ConfigureAwait(false); }
+        catch (Exception e) when (e is IOException or SocketException or ObjectDisposedException) { }
+    }
+
+    private static async Task Write(Stream stream, string status, string message, CancellationToken ct)
     {
         var body = Encoding.UTF8.GetBytes($"<!doctype html><meta charset=utf-8><title>SnowDock</title>"
             + $"<body style=\"font:16px Segoe UI,sans-serif;margin:3em\">{WebUtility.HtmlEncode(message)}</body>");

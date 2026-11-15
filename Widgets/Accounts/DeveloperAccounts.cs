@@ -119,7 +119,7 @@ internal sealed class LinearTile : ServiceTile<LinearMine>
     private const string Query = """
         query Mine($after: String) {
           viewer {
-            assignedIssues(first: 100, after: $after, filter: { state: { type: { nin: ["completed", "canceled"] } } }) {
+            assignedIssues(first: 100, after: $after, filter: { state: { type: { nin: ["completed", "canceled", "duplicate"] } } }) {
               nodes { state { type } }
               pageInfo { hasNextPage endCursor }
             }

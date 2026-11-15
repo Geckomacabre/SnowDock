@@ -34,12 +34,15 @@ internal abstract class GoogleTile<T> : ServiceTile<T> where T : class
     public override FrameworkElement BuildCard(WidgetPaint p)
     {
         var panel = new StackPanel { Width = 360 };
-        string status = GoogleAuth.Connected && !GoogleAuth.Granted(Scope)
+        bool failed = !GoogleAuth.Connected && GoogleAuth.LastProblem != null;
+        string status = GoogleAuth.Connecting ? "Waiting for you to finish signing in to Google in your browser…"
+            : failed ? $"Not connected: {GoogleAuth.LastProblem}"
+            : GoogleAuth.Connected && !GoogleAuth.Granted(Scope)
             ? $"Connected to Google, but without access to the {ApiName}. Connect again and allow it."
             : IsSample ? "Not connected: showing a sample. Connect Google below."
             : Error != null ? $"Connected, but: {Error}"
             : UpdatedAt is DateTime u ? $"Connected · updated {u:t}" : "Connected · loading…";
-        panel.Children.Add(new TextBlock { Text = status, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 10), Foreground = Error != null ? p.Bad : p.SubInk });
+        panel.Children.Add(new TextBlock { Text = status, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 10), Foreground = Error != null || failed ? p.Bad : p.SubInk });
 
         if (!IsSample && BuildDetail(p) is { } detail)
         {
