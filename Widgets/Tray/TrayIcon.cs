@@ -47,7 +47,8 @@ internal sealed record TrayIcon
             try
             {
                 var d = FileVersionInfo.GetVersionInfo(path).FileDescription?.Trim();
-                if (!string.IsNullOrEmpty(d) && !d.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) return d;
+                if (!string.IsNullOrEmpty(d) && !d.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+                    && !d.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)) return d;
             }
             catch { /* no version resource */ }
             return Path.GetFileNameWithoutExtension(path);

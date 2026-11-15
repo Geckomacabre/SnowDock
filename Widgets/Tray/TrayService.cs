@@ -37,7 +37,7 @@ internal static class TrayService
     public static bool Listening => _host != null;
     public static int Version => _version;
 
-    /// <summary>Visible icons: Windows' taskbar ones first, then the hidden ones, each by name.</summary>
+    /// <summary>Visible icons: Windows' taskbar ones first, then the hidden ones, each by program name.</summary>
     public static IReadOnlyList<TrayIcon> Icons => _icons;
 
     /// <summary>The icons now; with nobody using the service yet (a card preview), one read-only scan first.</summary>
@@ -159,7 +159,10 @@ internal static class TrayService
         foreach (var s in scanned)
             if (!heardKeys.Contains(s.Key)) all.TryAdd(s.Key, s);
 
-        var list = all.Values.OrderByDescending(i => i.Promoted).ThenBy(i => i.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+        // Sorted by program, not tooltip: tooltips change (status text), and icons shouldn't hop around the tile.
+        var list = all.Values.OrderByDescending(i => i.Promoted)
+            .ThenBy(i => i.AppName.Length > 0 ? i.AppName : i.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(i => i.Key, StringComparer.Ordinal).ToList();
         var signature = string.Join("\n", list.Select(i => $"{i.Key}|{i.Tip}|{i.Promoted}|{i.CanClick}|{i.Image?.GetHashCode()}"));
         lock (Gate)
         {
@@ -213,7 +216,7 @@ internal static class TrayService
         // Version 4: wParam = anchor x/y, lParam = event | icon id << 16. Older: wParam = icon id, lParam = event.
         var (w, l) = icon.Version >= 4
             ? (MakeLong(at.X, at.Y), MakeLong(message, (int)icon.UID))
-            : ((IntPtr)(int)icon.UID, (IntPtr)message);
+            : ((IntPtr)(long)icon.UID, (IntPtr)message); // the id is unsigned: zero-extend, never sign-extend
         SendNotifyMessage(icon.HWnd, icon.CallbackMessage, w, l);
     }
 }

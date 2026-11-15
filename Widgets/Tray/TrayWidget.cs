@@ -73,9 +73,12 @@ internal sealed class TrayWidget : DockWidget
         return slots;
     }
 
-    private static Slot? Hit(Point p, Size tile)
+    /// <summary>The list as last drawn, so a click hits what's on screen even if the list changed since.</summary>
+    private IReadOnlyList<TrayIcon>? _drawn;
+
+    private Slot? Hit(Point p, Size tile)
     {
-        foreach (var s in Slots(TrayService.Icons, tile))
+        foreach (var s in Slots(_drawn ?? TrayService.Icons, tile))
             if (s.Cell.Contains(p)) return s;
         return null;
     }
@@ -83,7 +86,7 @@ internal sealed class TrayWidget : DockWidget
     public override void Draw(DrawingContext dc, Rect r, WidgetPaint p)
     {
         Tile(dc, r, p);
-        var icons = TrayService.Icons;
+        var icons = _drawn = TrayService.Icons;
         if (icons.Count == 0)
         {
             Chevron(dc, r, p);
