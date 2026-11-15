@@ -85,7 +85,9 @@ internal sealed class DockConfig
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
-    public static DockConfig Load()
+    /// <param name="persist">Write back the result (imports, migrations). Snapshot/debug runs pass false so they
+    /// never touch the real settings file.</param>
+    public static DockConfig Load(bool persist = true)
     {
         DockConfig cfg;
         try
@@ -126,7 +128,7 @@ internal sealed class DockConfig
             pin.Aumid = info.Aumid ?? pin.Aumid;
         }
         cfg.EnsureExplorerFirst();
-        cfg.Save();
+        if (persist) cfg.Save();
         return cfg;
     }
 

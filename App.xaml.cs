@@ -165,7 +165,7 @@ public partial class App : Application
             dragFrom = f;
             dragTo = t;
         }
-        var config = DockConfig.Load();
+        var config = DockConfig.Load(persist: false); // snapshots never write the real settings
         // --edge Left|Right: render a side dock (in memory only; the setting on disk is untouched).
         if (Enum.TryParse<DockEdge>(ArgValue(args, "--edge"), true, out var edge)) config.Edge = edge;
         // --style id: render another era's look (also in memory only). --backdrop light: a bright desktop.
