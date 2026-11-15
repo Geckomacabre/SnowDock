@@ -200,10 +200,8 @@ internal sealed partial class DockWindow : IWidgetHost
             _card.CloseCard();
             return;
         }
-        // The click in the tile's own upright coordinates (a top dock draws tiles flipped back upright).
-        var r = _surface.WidgetRect(item);
-        var inTile = new Point(dockPoint.X - r.X, _config.Edge == DockEdge.Top ? r.Bottom - dockPoint.Y : dockPoint.Y - r.Y);
-        try { item.Widget!.OnClickAt(inTile, r.Size); }
+        var (at, tile) = TilePoint(item, dockPoint);
+        try { item.Widget!.OnClickAt(at, tile); }
         catch (Exception ex) { AppPaths.Log($"Widget {item.Widget?.Config.Type} click failed: {ex.Message}"); }
         _surface.InvalidateVisual();
     }
@@ -222,5 +220,27 @@ internal sealed partial class DockWindow : IWidgetHost
             _surface.InvalidateVisual();
         }
         catch (Exception ex) { AppPaths.Log($"Widget {item.Widget?.Config.Type} wheel failed: {ex.Message}"); }
+    }
+
+    /// <summary>A right-click the widget handles itself (a tray icon's own menu, say). False: show the dock's widget menu.</summary>
+    private bool WidgetRightClicked(DockItem item, Point dockPoint)
+    {
+        if (_surface.EditMode) return false; // keep Remove Widget reachable while editing
+        var (at, tile) = TilePoint(item, dockPoint);
+        try { return item.Widget!.OnRightClickAt(at, tile); }
+        catch (Exception ex)
+        {
+            AppPaths.Log($"Widget {item.Widget?.Config.Type} right-click failed: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>A dock-space point in the tile's own upright coordinates, and the tile's size.</summary>
+    private (Point At, Size Tile) TilePoint(DockItem item, Point dockPoint)
+    {
+        var r = _surface.WidgetRect(item);
+        double y = dockPoint.Y - r.Y;
+        if (_config.Edge == DockEdge.Top) y = r.Height - y; // the tile is drawn flipped back upright
+        return (new Point(dockPoint.X - r.X, y), r.Size);
     }
 }

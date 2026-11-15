@@ -336,7 +336,7 @@ internal sealed partial class DockWindow : Window
         if (IsDragging) return;
         var p = _surface.ToDock(e.GetPosition(_surface));
         var item = _surface.HitItem(p);
-        if (item != null) ShowItemMenu(item);
+        if (item != null) ShowItemMenu(item, p);
         else if (_surface.IsOverDock(p)) ShowDockMenu(p);
         e.Handled = true;
     }

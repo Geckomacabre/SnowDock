@@ -92,8 +92,14 @@ internal abstract class DockWidget
         if (HasCard) Host?.ShowCard(this);
     }
 
-    /// <summary>A click at <paramref name="inTile"/> (upright tile coordinates, origin at the tile's top-left) in a tile of size <paramref name="tile"/>.</summary>
+    /// <summary>
+    /// A click at a point in the tile, in the tile's upright coordinates (0,0 = its top-left as seen on screen).
+    /// By default the same as <see cref="OnClick"/>.
+    /// </summary>
     public virtual void OnClickAt(Point inTile, Size tile) => OnClick();
+
+    /// <summary>A right-click in the tile. Return true when handled, so the dock's own widget menu stays closed.</summary>
+    public virtual bool OnRightClickAt(Point inTile, Size tile) => false;
 
     /// <summary>The mouse wheel over the tile (delta in WPF units, 120 per notch). Return true if handled.</summary>
     public virtual bool OnWheel(int delta) => false;

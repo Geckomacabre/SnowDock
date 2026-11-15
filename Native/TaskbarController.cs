@@ -97,7 +97,7 @@ internal sealed class TaskbarController
         var abd = new APPBARDATA
         {
             cbSize = Marshal.SizeOf<APPBARDATA>(),
-            hWnd = FindWindow("Shell_TrayWnd", null),
+            hWnd = ExplorerTray(),
             lParam = (IntPtr)(autoHide ? ABS_AUTOHIDE : ABS_ALWAYSONTOP)
         };
         SHAppBarMessage(ABM_SETSTATE, ref abd);
@@ -109,9 +109,24 @@ internal sealed class TaskbarController
             ShowWindow(h, visible ? SW_SHOWNA : SW_HIDE);
     }
 
+    /// <summary>
+    /// Explorer's Shell_TrayWnd. The tray widget runs a hidden window of the same class in this process (so it
+    /// hears tray icons), so skip our own windows rather than taking whichever FindWindow returns first.
+    /// </summary>
+    internal static IntPtr ExplorerTray()
+    {
+        IntPtr h = IntPtr.Zero;
+        while ((h = FindWindowEx(IntPtr.Zero, h, "Shell_TrayWnd", null)) != IntPtr.Zero)
+        {
+            GetWindowThreadProcessId(h, out uint pid);
+            if (pid != (uint)Environment.ProcessId) return h;
+        }
+        return IntPtr.Zero;
+    }
+
     private static IEnumerable<IntPtr> TaskbarWindows()
     {
-        var primary = FindWindow("Shell_TrayWnd", null);
+        var primary = ExplorerTray();
         if (primary != IntPtr.Zero) yield return primary;
 
         IntPtr after = IntPtr.Zero;
