@@ -92,6 +92,12 @@ internal abstract class DockWidget
         if (HasCard) Host?.ShowCard(this);
     }
 
+    /// <summary>A click at <paramref name="inTile"/> (upright tile coordinates, origin at the tile's top-left) in a tile of size <paramref name="tile"/>.</summary>
+    public virtual void OnClickAt(Point inTile, Size tile) => OnClick();
+
+    /// <summary>The mouse wheel over the tile (delta in WPF units, 120 per notch). Return true if handled.</summary>
+    public virtual bool OnWheel(int delta) => false;
+
     public virtual void OnRemoved() { }
 
     // ---- settings ----
