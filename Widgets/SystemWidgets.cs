@@ -4,6 +4,7 @@ using System.Windows.Media;
 
 namespace SnowDock.Widgets;
 
+[WidgetFamily(30)]
 internal static class SystemWidgets
 {
     public static void Register(Action<string, string, string, string, Func<DockWidget>> add)

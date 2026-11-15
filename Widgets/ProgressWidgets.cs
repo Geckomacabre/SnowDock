@@ -3,6 +3,7 @@ using System.Windows.Media;
 
 namespace SnowDock.Widgets;
 
+[WidgetFamily(11)]
 internal static class ProgressWidgets
 {
     public static void Register(Action<string, string, string, string, Func<DockWidget>> add)

@@ -7,6 +7,7 @@ using static SnowDock.Native.NativeMethods;
 
 namespace SnowDock.Widgets;
 
+[WidgetFamily(31)]
 internal static class ActionWidgets
 {
     public static void Register(Action<string, string, string, string, Func<DockWidget>> add)

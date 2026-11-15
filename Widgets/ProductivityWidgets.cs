@@ -7,6 +7,7 @@ using System.Windows.Media;
 
 namespace SnowDock.Widgets;
 
+[WidgetFamily(20)]
 internal static class ProductivityWidgets
 {
     public static void Register(Action<string, string, string, string, Func<DockWidget>> add)

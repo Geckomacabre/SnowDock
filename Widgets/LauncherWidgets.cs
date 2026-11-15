@@ -6,6 +6,7 @@ using System.Windows.Media;
 
 namespace SnowDock.Widgets;
 
+[WidgetFamily(50)]
 internal static class LauncherWidgets
 {
     public static void Register(Action<string, string, string, string, Func<DockWidget>> add)

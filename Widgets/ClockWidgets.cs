@@ -4,6 +4,7 @@ using System.Windows.Media;
 
 namespace SnowDock.Widgets;
 
+[WidgetFamily(10)]
 internal static class ClockWidgets
 {
     public static void Register(Action<string, string, string, string, Func<DockWidget>> add)
