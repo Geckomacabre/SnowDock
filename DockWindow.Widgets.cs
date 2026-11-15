@@ -200,8 +200,27 @@ internal sealed partial class DockWindow : IWidgetHost
             _card.CloseCard();
             return;
         }
-        try { item.Widget!.OnClick(); }
+        // The click in the tile's own upright coordinates (a top dock draws tiles flipped back upright).
+        var r = _surface.WidgetRect(item);
+        var inTile = new Point(dockPoint.X - r.X, _config.Edge == DockEdge.Top ? r.Bottom - dockPoint.Y : dockPoint.Y - r.Y);
+        try { item.Widget!.OnClickAt(inTile, r.Size); }
         catch (Exception ex) { AppPaths.Log($"Widget {item.Widget?.Config.Type} click failed: {ex.Message}"); }
         _surface.InvalidateVisual();
+    }
+
+    /// <summary>The mouse wheel over a widget tile (e.g. volume).</summary>
+    private void OnWheelSurface(object sender, System.Windows.Input.MouseWheelEventArgs e)
+    {
+        if (IsDragging) return;
+        var item = _surface.HitItem(_surface.ToDock(e.GetPosition(_surface)));
+        if (item?.Kind != DockItemKind.Widget) return;
+        try
+        {
+            if (!item.Widget!.OnWheel(e.Delta)) return;
+            e.Handled = true;
+            item.Name = item.Widget.Title;
+            _surface.InvalidateVisual();
+        }
+        catch (Exception ex) { AppPaths.Log($"Widget {item.Widget?.Config.Type} wheel failed: {ex.Message}"); }
     }
 }

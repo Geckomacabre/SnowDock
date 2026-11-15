@@ -67,6 +67,7 @@ internal sealed partial class DockWindow : Window
         _surface.MouseLeftButtonDown += OnLeftDown;
         _surface.MouseLeftButtonUp += OnLeftUp;
         _surface.MouseRightButtonUp += OnRightUp;
+        _surface.MouseWheel += OnWheelSurface;
         SetupDrop();
 
         _tracker.Changed += RebuildItems;
