@@ -92,6 +92,15 @@ internal abstract class DockWidget
         if (HasCard) Host?.ShowCard(this);
     }
 
+    /// <summary>
+    /// A click at a point in the tile, in the tile's upright coordinates (0,0 = its top-left as seen on screen).
+    /// By default the same as <see cref="OnClick"/>.
+    /// </summary>
+    public virtual void OnClickAt(Point inTile, Size tile) => OnClick();
+
+    /// <summary>A right-click in the tile. Return true when handled, so the dock's own widget menu stays closed.</summary>
+    public virtual bool OnRightClickAt(Point inTile, Size tile) => false;
+
     public virtual void OnRemoved() { }
 
     // ---- settings ----

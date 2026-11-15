@@ -17,7 +17,7 @@ internal sealed partial class DockWindow
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     private static extern int SHEmptyRecycleBin(IntPtr hwnd, string? root, uint flags);
 
-    private void ShowItemMenu(DockItem item)
+    private void ShowItemMenu(DockItem item, Point? at = null)
     {
         if (item.Kind == DockItemKind.Stack)
         {
@@ -26,6 +26,7 @@ internal sealed partial class DockWindow
         }
         if (item.Kind == DockItemKind.Widget)
         {
+            if (at is Point p && WidgetRightClicked(item, p)) return;
             var widgetMenu = NewMenu();
             var widget = item.Widget!;
             if (widget.HasCard) Add(widgetMenu, "Open", () => ShowCard(widget));
