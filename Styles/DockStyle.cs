@@ -19,6 +19,8 @@ internal abstract class DockStyle
     /// <summary>The releases this look covers, e.g. "10.6–10.7".</summary>
     public abstract string Versions { get; }
     public virtual bool DarkMenus => false;
+    /// <summary>Widgets draw light tiles on this dock (light docks), dark tiles otherwise.</summary>
+    public virtual bool LightTiles => false;
 
     // ---- geometry (DIPs) ----
     /// <summary>Distance from the screen edge to the bottom of the icons.</summary>

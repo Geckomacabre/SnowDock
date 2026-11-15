@@ -97,7 +97,12 @@ public partial class App : Application
         if (Enum.TryParse<DockEdge>(ArgValue(args, "--edge"), true, out var edge)) config.Edge = edge;
         // --style id: render another era's look (also in memory only). --backdrop light: a bright desktop.
         if (ArgValue(args, "--style") is string styleId) config.Style = styleId;
+        // --widgets a,b,c: show these widgets (in memory only).
+        if (ArgValue(args, "--widgets") is string widgetList)
+            config.Widgets = widgetList.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(t => new Widgets.WidgetConfig { Type = t.Trim() }).ToList();
         DockWindow.SnapshotLightBackdrop = string.Equals(ArgValue(args, "--backdrop"), "light", StringComparison.OrdinalIgnoreCase);
+        DockWindow.SnapshotEditMode = args.Any(a => a.Equals("--edit", StringComparison.OrdinalIgnoreCase));
         _dock = new DockWindow(config, preview: true);
         _dock.Loaded += async (_, _) =>
         {
@@ -106,7 +111,11 @@ public partial class App : Application
             try
             {
                 // --fan K: the K-th stack fanned out (with --hover as the highlighted row).
-                if (args.Any(a => a.Equals("--menus", StringComparison.OrdinalIgnoreCase)))
+                if (args.Any(a => a.Equals("--picker", StringComparison.OrdinalIgnoreCase)))
+                    _dock.SavePickerPreview(Path.GetFullPath(path));
+                else if (ArgValue(args, "--card") is string cardType)
+                    _dock.SaveCardPreview(Path.GetFullPath(path), cardType);
+                else if (args.Any(a => a.Equals("--menus", StringComparison.OrdinalIgnoreCase)))
                     _dock.SaveMenuPreview(Path.GetFullPath(path));
                 else if (args.Any(a => a.Equals("--switch-test", StringComparison.OrdinalIgnoreCase)))
                     await _dock.RunStyleSwitchTest(Path.GetFullPath(path));

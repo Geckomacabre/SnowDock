@@ -33,6 +33,7 @@ internal sealed class FlatStyle : DockStyle
     public override string Name => StyleName;
     public override string Versions => StyleVersions;
     public override bool DarkMenus => Dark;
+    public override bool LightTiles => !Dark;
 
     private double FloatGap(double icon) => Floating ? Math.Round(icon * 0.08) : 0;
     private double DotSpace(double icon) => Math.Round(icon * 0.1) + 5;
@@ -63,9 +64,9 @@ internal sealed class FlatStyle : DockStyle
             dc.DrawRoundedRectangle(null, InnerRim, inner, Math.Max(0, r - 1), Math.Max(0, r - 1));
         }
 
-        if (!double.IsNaN(s.SeparatorX))
+        foreach (var sepX in s.SeparatorXs)
         {
-            double x = Math.Round(s.SeparatorX) + 0.5, inset = Math.Round(icon * 0.1);
+            double x = Math.Round(sepX) + 0.5, inset = Math.Round(icon * 0.1);
             dc.DrawLine(Separator, new Point(x, top + inset), new Point(x, bottom - inset));
         }
     }

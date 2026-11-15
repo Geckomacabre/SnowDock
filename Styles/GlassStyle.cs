@@ -19,6 +19,7 @@ internal sealed class GlassStyle : DockStyle
     public override string Name => StyleName;
     public override string Versions => StyleVersions;
     public override bool DarkMenus => Dark;
+    public override bool LightTiles => !Dark;
 
     private static readonly Brush LightFill = Vertical((C(78, 255, 255, 255), 0), (C(40, 255, 255, 255), 1));
     private static readonly Brush DarkFill = Vertical((C(110, 34, 34, 40), 0), (C(130, 18, 18, 22), 1));
@@ -69,9 +70,9 @@ internal sealed class GlassStyle : DockStyle
         var rim = rect; rim.Inflate(-0.7, -0.7);
         dc.DrawRoundedRectangle(null, RimLight, rim, r - 0.7, r - 0.7);
 
-        if (!double.IsNaN(s.SeparatorX))
+        foreach (var sepX in s.SeparatorXs)
         {
-            double x = Math.Round(s.SeparatorX) + 0.5, inset = r * 0.55;
+            double x = Math.Round(sepX) + 0.5, inset = r * 0.55;
             dc.DrawLine(Dark ? DarkSeparator : LightSeparator, new Point(x, rect.Top + inset), new Point(x, rect.Bottom - inset));
         }
     }

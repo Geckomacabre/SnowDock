@@ -28,6 +28,7 @@ internal sealed class AquaStyle : DockStyle
     private readonly Dictionary<string, Geometry> _labelCache = new();
 
     public override string Id => StyleId;
+    public override bool LightTiles => true;
     public override string Name => StyleName;
     public override string Versions => StyleVersions;
 
@@ -63,9 +64,9 @@ internal sealed class AquaStyle : DockStyle
         inner.Inflate(-1, -1);
         dc.DrawRoundedRectangle(null, InnerRim, inner, r - 1, r - 1);
 
-        if (!double.IsNaN(s.SeparatorX))
+        foreach (var sepX in s.SeparatorXs)
         {
-            double x = Math.Round(s.SeparatorX) + 0.5;
+            double x = Math.Round(sepX) + 0.5;
             dc.DrawLine(SeparatorDark, new Point(x, top + 5), new Point(x, s.CrossLength));
             dc.DrawLine(SeparatorLight, new Point(x + 1, top + 5), new Point(x + 1, s.CrossLength));
         }

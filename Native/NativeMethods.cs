@@ -52,7 +52,7 @@ internal static class NativeMethods
                       ABM_GETSTATE = 0x4, ABM_GETTASKBARPOS = 0x5, ABM_ACTIVATE = 0x6,
                       ABM_WINDOWPOSCHANGED = 0x9, ABM_SETSTATE = 0xA;
     public const int ABN_STATECHANGE = 0x0, ABN_POSCHANGED = 0x1, ABN_FULLSCREENAPP = 0x2, ABN_WINDOWARRANGE = 0x3;
-    public const uint ABE_LEFT = 0, ABE_RIGHT = 2, ABE_BOTTOM = 3;
+    public const uint ABE_LEFT = 0, ABE_TOP = 1, ABE_RIGHT = 2, ABE_BOTTOM = 3;
     public const int ABS_AUTOHIDE = 0x1, ABS_ALWAYSONTOP = 0x2;
 
     // ---- SystemParametersInfo ----

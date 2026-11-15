@@ -65,7 +65,16 @@ internal sealed partial class DockWindow
             }
             right.Add(_recycleBin);
         }
-        int separator = right.Count > 0 ? items.Count : -1;
+        // Widgets sit between the apps and the right-hand side, each section with its own separator.
+        var widgets = WidgetItems().ToList();
+        int separator = -1, rightSeparator = -1;
+        if (widgets.Count > 0)
+        {
+            separator = items.Count;
+            items.AddRange(widgets);
+            if (right.Count > 0) rightSeparator = items.Count;
+        }
+        else if (right.Count > 0) separator = items.Count;
         items.AddRange(right);
 
         foreach (var item in items.Where(i => i.Bounce == BounceKind.Launch && i.IsRunning))
@@ -74,6 +83,7 @@ internal sealed partial class DockWindow
         _surface.Items.Clear();
         _surface.Items.AddRange(items);
         _surface.SeparatorIndex = separator;
+        _surface.RightSeparatorIndex = rightSeparator;
         if (_surface.Hovered != null && !items.Contains(_surface.Hovered)) _surface.Hovered = null;
         EnsureAnimating();
     }

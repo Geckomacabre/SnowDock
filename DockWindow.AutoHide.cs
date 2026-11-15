@@ -47,14 +47,15 @@ internal sealed partial class DockWindow
 
         if (hidden)
         {
-            // Reveal when the mouse presses against the dock's edge of this monitor.
-            if (AtDockEdge(c, mon)) Reveal();
+            // Reveal when the mouse presses against the dock's edge of this monitor, or Start opens.
+            if (AtDockEdge(c, mon) || StartIsOpen()) Reveal();
             return;
         }
 
-        // Shown: stay while the mouse is on the dock or anything of ours is open; hide shortly after it leaves.
+        // Shown: stay while the mouse is on the dock, Start is open, or anything of ours is open;
+        // hide shortly after the mouse leaves.
         var local = _surface.DockFromScreen(new Point(c.X, c.Y));
-        bool overDock = _surface.IsOverDock(local) || AtDockEdge(c, mon);
+        bool overDock = _surface.IsOverDock(local) || AtDockEdge(c, mon) || StartIsOpen();
         if (overDock || PopupOpen() || IsDragging || _surface.DropTarget != null || _drag != null)
         {
             _mouseLeftDockAt = DateTime.MaxValue;
@@ -77,6 +78,7 @@ internal sealed partial class DockWindow
         {
             DockEdge.Left => c.X <= mon.Left + 1,
             DockEdge.Right => c.X >= mon.Right - 2,
+            DockEdge.Top => c.Y <= mon.Top + 1,
             _ => c.Y >= mon.Bottom - 2
         };
     }

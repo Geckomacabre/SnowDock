@@ -22,6 +22,8 @@ internal sealed partial class DockWindow
         public Vector GrabOffsetPx;
         public bool OverDock = true;
         public int InsertIndex = -1;
+        /// <summary>Width of the gap the item needs: its own width plus spacing.</summary>
+        public double Slot;
     }
 
     private DragState? _drag;
@@ -31,7 +33,8 @@ internal sealed partial class DockWindow
     private bool IsDragging => _drag?.Started == true;
 
     /// <summary>File Explorer (the Finder's stand-in) and the Recycle Bin stay put, as on the Mac.</summary>
-    private static bool CanDrag(DockItem item) => item.Kind == DockItemKind.App && item.Pin?.Permanent != true;
+    private static bool CanDrag(DockItem item) =>
+        (item.Kind == DockItemKind.App && item.Pin?.Permanent != true) || item.Kind == DockItemKind.Widget;
 
     /// <summary>Hold this long without moving to open Dock Exposé for a running app.</summary>
     private const double HoldSeconds = 0.55;
@@ -117,12 +120,14 @@ internal sealed partial class DockWindow
         // Lift the icon out of the row, leaving a gap the same size so nothing jumps.
         _surface.Items.RemoveAt(idx);
         if (_surface.SeparatorIndex > idx) _surface.SeparatorIndex--;
-        double slot = item.Size + _surface.Gap;
+        if (_surface.RightSeparatorIndex > idx) _surface.RightSeparatorIndex--;
+        double slot = item.Width + _surface.Gap;
+        d.Slot = item.RestWidth(_surface.IconSize) + _surface.Gap;
         if (idx < _surface.Items.Count) _surface.Items[idx].ExtraBefore = slot;
         else _surface.TrailingExtra = slot;
 
-        _ghost ??= new DragGhost(Math.Max(_surface.MagnifiedSize, _surface.IconSize * 2.4) + 24);
-        _ghost.Begin(item.Icon, item.Size, DpiScale, centerPx);
+        _ghost ??= new DragGhost(Math.Max(_surface.MagnifiedSize, _surface.IconSize * 3.4) + 24);
+        _ghost.Begin(item.Kind == DockItemKind.Widget ? RenderWidgetImage(item) : item.Icon, item.Size, DpiScale, centerPx);
         UpdateDrag(p);
     }
 
@@ -137,10 +142,22 @@ internal sealed partial class DockWindow
                      && local.Y >= _surface.Baseline - s * 1.6 && local.Y <= _surface.CrossLength + s;
 
         // Faded = "letting go here takes it out of the Dock" (a running app stays until it quits).
-        _ghost.SetRemoving(!d.OverDock && d.Item.Pin != null);
+        bool widget = d.Item.Kind == DockItemKind.Widget;
+        _ghost.SetRemoving(!d.OverDock && (d.Item.Pin != null || widget));
 
-        int appCount = _surface.SeparatorIndex >= 0 ? _surface.SeparatorIndex : _surface.Items.Count;
-        int first = _surface.Items.Count > 0 && _surface.Items[0].Pin?.Permanent == true ? 1 : 0;
+        // Apps move among the apps; widgets among the widgets.
+        int first, appCount;
+        if (widget)
+        {
+            first = _surface.SeparatorIndex >= 0 ? _surface.SeparatorIndex : _surface.Items.Count;
+            appCount = first;
+            while (appCount < _surface.Items.Count && _surface.Items[appCount].Kind == DockItemKind.Widget) appCount++;
+        }
+        else
+        {
+            appCount = _surface.SeparatorIndex >= 0 ? _surface.SeparatorIndex : _surface.Items.Count;
+            first = _surface.Items.Count > 0 && _surface.Items[0].Pin?.Permanent == true ? 1 : 0;
+        }
         int insert = -1;
         if (d.OverDock)
         {
@@ -150,7 +167,7 @@ internal sealed partial class DockWindow
         }
         d.InsertIndex = insert;
 
-        double slot = _surface.SlotWidth;
+        double slot = d.Slot;
         for (int i = 0; i < _surface.Items.Count; i++)
             _surface.Items[i].TargetExtraBefore = i == insert ? slot : 0;
         _surface.TargetTrailingExtra = insert >= 0 && insert == _surface.Items.Count ? slot : 0;
@@ -165,6 +182,11 @@ internal sealed partial class DockWindow
         if (d is not { Started: true }) return;
 
         var item = d.Item;
+        if (item.Kind == DockItemKind.Widget)
+        {
+            EndWidgetDrag(d, cancel);
+            return;
+        }
         PinnedItem? targetPin = item.Pin;
         string? runningKey = item.Running?.Key;
         bool poof = false;

@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Interop;
 using SnowDock.Native;
+using SnowDock.Widgets;
 using static SnowDock.Native.NativeMethods;
 
 namespace SnowDock;
@@ -21,6 +22,17 @@ internal sealed partial class DockWindow
         if (item.Kind == DockItemKind.Stack)
         {
             ShowStackMenu(item);
+            return;
+        }
+        if (item.Kind == DockItemKind.Widget)
+        {
+            var widgetMenu = NewMenu();
+            var widget = item.Widget!;
+            if (widget.HasCard) Add(widgetMenu, "Open", () => ShowCard(widget));
+            Add(widgetMenu, "Remove Widget", () => RemoveWidget(widget.Config));
+            Sep(widgetMenu);
+            Add(widgetMenu, "Widgets…", () => Dispatcher.BeginInvoke(ShowPicker));
+            Open(widgetMenu, item);
             return;
         }
 
@@ -85,7 +97,12 @@ internal sealed partial class DockWindow
         });
         Add(menu, _config.AutoHide ? "Turn Hiding Off" : "Turn Hiding On", () => SetAutoHide(!_config.AutoHide));
         // Opened after this menu has closed, so the two never overlap.
+        Add(menu, "Widgets…", () => Dispatcher.BeginInvoke(ShowPicker));
         Add(menu, $"Dock Style: {_surface.Look.Name}…", () => Dispatcher.BeginInvoke(() => ShowStyleMenu(p)));
+        Sep(menu);
+        foreach (var (name, icon) in new[] { ("Small", 40.0), ("Medium", 52.0), ("Large", 64.0) })
+            Add(menu, $"Size: {name}", () => SetIconSize(icon)).IsChecked = Math.Abs(_config.IconSize - icon) < 0.5;
+        Add(menu, "24-Hour Clock", () => SetClock24h(!WidgetEnv.Clock24h)).IsChecked = WidgetEnv.Clock24h;
         Sep(menu);
         AddPositionItems(menu);
         Sep(menu);
@@ -117,7 +134,7 @@ internal sealed partial class DockWindow
     /// <summary>"Position on Screen": Left, Bottom, Right (as in the Mac's dock menu).</summary>
     private void AddPositionItems(ContextMenu menu)
     {
-        foreach (var (edge, name) in new[] { (DockEdge.Left, "Left"), (DockEdge.Bottom, "Bottom"), (DockEdge.Right, "Right") })
+        foreach (var (edge, name) in new[] { (DockEdge.Left, "Left"), (DockEdge.Bottom, "Bottom"), (DockEdge.Right, "Right"), (DockEdge.Top, "Top") })
         {
             var mi = Add(menu, $"Position on {name}", () => SetEdge(edge));
             mi.IsChecked = _config.Edge == edge;
@@ -137,6 +154,7 @@ internal sealed partial class DockWindow
         {
             DockEdge.Left => (popup, target, _) => new[] { new CustomPopupPlacement(new Point(target.Width + 4, target.Height / 2 - popup.Height / 2), PopupPrimaryAxis.Vertical) },
             DockEdge.Right => (popup, target, _) => new[] { new CustomPopupPlacement(new Point(-popup.Width - 4, target.Height / 2 - popup.Height / 2), PopupPrimaryAxis.Vertical) },
+            DockEdge.Top => (popup, target, _) => new[] { new CustomPopupPlacement(new Point(target.Width / 2 - popup.Width / 2, target.Height + 4), PopupPrimaryAxis.Horizontal) },
             _ => CenterAbove
         };
     }

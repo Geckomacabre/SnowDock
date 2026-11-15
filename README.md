@@ -2,8 +2,8 @@
 
 A Mac-style dock for Windows 11 that replaces the taskbar, with the look of every Dock from Mac OS X 10.0 to
 macOS 26 (Snow Leopard by default). It has the magnification wave, labels, running-app indicators, launch and
-attention bounces, dock menus, folder stacks (fan, grid and list), Dock Exposé, drag and drop, auto-hide, and
-left, bottom or right placement.
+attention bounces, dock menus, folder stacks (fan, grid and list), Dock Exposé, live widgets, drag and drop,
+auto-hide, and top, bottom, left or right placement.
 
 Everything is drawn in code (`DockSurface.Render.cs`). No Apple artwork is included. App icons and thumbnails
 come from Windows and from the apps themselves.
@@ -58,6 +58,28 @@ Hiding the taskbar also hides everything else on it:
 
 Set `"HideTaskbar": false` if you'd rather keep the taskbar and run the dock beside it.
 
+## Widgets
+
+Widgets are live tiles in their own section of the dock, between your apps and the stacks. Right-click the dock
+and choose **Widgets…** to open the picker: browse by category or search, and click a widget to add it. Click it
+again to take it off. While the picker is open, each widget in the dock shows a **−** badge you can click to
+remove it.
+
+Drag a widget along the dock to reorder it, or drag it off to remove it. Click a widget to use it. Most open a
+card with more detail or controls; Esc or a click elsewhere closes the card.
+
+| Category | Widgets |
+|---|---|
+| Clocks | Clock, Flip Clock, Segment Clock, Analog Clock, World Time (pick the city in its card), Date, Calendar Page, Day / Month / Year Progress |
+| Productivity | Timer, Stopwatch (with laps), Pomodoro, To-Dos, Notes |
+| System | CPU, Memory, Top CPU, Top Memory, Network, Storage, Battery, Start, Show Desktop, Notifications, Quick Settings, On-Screen Keyboard, Screenshot, Light / Dark, Keyboard Language |
+| Apps & Files | Search (web, or a path to open), Commands (Start-menu apps and system actions), Recently Opened |
+
+- **Where data lives:** to-dos and notes are saved next to the settings file (`todos.json`, `notes.json`).
+- **Side docks:** widgets only show on top and bottom docks. A left or right dock hides them, because there's no
+  room for wide tiles.
+- **Network:** none of these widgets go online.
+
 ## Styles
 
 Right-click an empty part of the dock and choose **Dock Style…** to switch. The change is immediate and saved.
@@ -75,8 +97,11 @@ Releases that shared a look share a style:
 | Big Sur to Sequoia | 11–15 | Floating, rounded, translucent; light or dark |
 | Tahoe | 26 | Liquid Glass: a clear floating slab with a bright rim and sheen; light or dark |
 
-On the left or right, the 3D-shelf styles switch to a flat panel, as those releases did. The other styles keep
-their look on the sides.
+On the left, right or top, the 3D-shelf styles switch to a flat panel, as those releases did away from the bottom.
+The other styles keep their look on every edge.
+
+There are also four plain looks that aren't tied to a Mac release: **Black**, **White**, **Midnight** and
+**Frosted Glass**.
 
 **What's approximate:**
 - Everything is drawn in code to resemble each era. No Apple artwork is used.
@@ -145,10 +170,15 @@ Downloading or copying a file sets that time, so it works the same way.
 Right-click an empty part of the shelf for:
 - **Magnification** on or off
 - **Dock Style…**: pick an era (see Styles above)
-- **Hiding** on or off: auto-hide slides the dock off the screen edge. Push the mouse against that edge to bring it
-  back. While hiding, the dock doesn't reserve screen space.
-- **Position on Left / Bottom / Right**: side docks use the flat 2D look, with labels pointing into the screen.
-  Stacks open as lists there, since fans and the grid's pointer only work from the bottom.
+- **Hiding** on or off: auto-hide slides the dock off the screen edge. Push the mouse against that edge, or open
+  Start, to bring it back. While hiding, the dock doesn't reserve screen space.
+- **Widgets…**: the widget picker (see Widgets above)
+- **Size: Small / Medium / Large**
+- **24-Hour Clock**: for the clock widgets. It follows your Windows time format until you change it.
+- **Position on Left / Bottom / Right / Top**. You can also drag an empty spot of the dock and let go near
+  another edge (or on another monitor), and it moves there.
+  - Side docks use the flat 2D look, with labels pointing into the screen.
+  - Away from the bottom, stacks open as lists, since fans and the grid's pointer only work from the bottom.
 - **Show on Display N** (with more than one monitor)
 - **Start SnowDock at Sign-In** (off until you turn it on)
 - **Add Folder Stack…**, **Dock Settings…**, **Quit**
@@ -170,6 +200,9 @@ live Exposé run. Check these in `--preview` first:
 - [ ] Turn hiding on, then off; move the dock left and right, then back to the bottom; switch displays
 - [ ] Switch through a few Dock Styles (one shelf, one flat, one floating): the dock redraws, menus change between
       light and dark, and in real mode maximized windows still stop short of it
+- [ ] Widgets…: add a clock, the CPU ring and a timer; remove one with its − badge; drag one to a new spot;
+      click the timer (it starts) and the to-dos (a card opens)
+- [ ] Drag an empty spot of the dock to the top of the screen and back; try Small and Large sizes
 - [ ] Then in real mode: the taskbar disappears, maximized windows stop short of the dock, and Win, Win+A and
       Win+N still work
 - [ ] In real mode with Hiding on: pushing the mouse against the bottom edge brings back the dock, not the Windows
@@ -189,7 +222,9 @@ file, restart the dock.
 | `HideTaskbar` | true | Hide the Windows taskbar in real mode |
 | `ReserveScreenSpace` | true | Maximized windows stop short of the dock |
 | `AutoHide` | false | Slide the dock off the edge until the mouse touches it |
-| `Edge` | `Bottom` | `Left`, `Bottom` or `Right` |
+| `Edge` | `Bottom` | `Left`, `Bottom`, `Right` or `Top` |
+| `Widgets` | none | The widgets in the dock, in order, each with its own `Settings` |
+| `Clock24h` | (your Windows format) | `true` or `false` for the clock widgets |
 | `Monitor` | (main) | Device name of the display to use, e.g. `\\.\DISPLAY2` |
 | `ShowRecycleBin` | true | Recycle Bin after the separator |
 | `Pinned` | your taskbar pins | Imported once from your taskbar pins |
@@ -204,6 +239,8 @@ All of these render or plan offscreen. They never move the mouse, and nothing is
 
 ```
 SnowDock.exe --snapshot out.png [--hover N] [--style id] [--backdrop light] [--edge Left|Right] [--hide 0..1] [--dump-icons dir]
+SnowDock.exe --snapshot out.png --widgets clock,cpu,timer [--edit]   # show these widgets (not saved); --edit adds remove badges
+SnowDock.exe --snapshot out.png --picker | --card TYPE      # the widget picker, or one widget's card
 SnowDock.exe --snapshot out.png --menus                     # dark and light dock menus side by side
 SnowDock.exe --snapshot out.txt --switch-test               # switch styles live (not saved), log the window size
 SnowDock.exe --snapshot out.png --drag FROM:TO [--drop]     # --drop really saves the new order
@@ -212,6 +249,21 @@ SnowDock.exe --snapshot out.png --expose                    # Exposé layout wit
 SnowDock.exe --snapshot out.txt --drop-plans "a|b|c"        # what dropping those paths would do, per spot
 SnowDock.exe --poof-preview out.png
 ```
+
+## Planned
+
+- **More widgets that need no account:** weather (for a city you pick), currency, crypto prices, LeetCode stats,
+  and media controls (Now Playing, volume, microphone).
+- **Account widgets** using a key you paste, stored encrypted on this PC and shown as samples until connected:
+  revenue (Stripe, Polar, Lemon Squeezy, Paddle, Gumroad, Shopify, Dodo), analytics (Plausible, Dub), developer
+  (GitHub, Linear, Resend, Supabase), YouTube, Instagram, DeepSeek and GLM balances, OpenCode usage.
+- **The tray** in a widget, **one dock per monitor**, and **update checks** against GitHub Releases.
+
+**Not planned:**
+- AI plan-usage tiles that work by reusing another app's or browser's sign-in.
+- Widgets whose services need paid or approved API access, or a Google sign-in app you'd register yourself:
+  X, TikTok, Gmail, Search Console.
+- WhatsApp unread counts, which need an installed-package identity.
 
 ## Known limits
 

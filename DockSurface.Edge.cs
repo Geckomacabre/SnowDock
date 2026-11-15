@@ -12,7 +12,9 @@ namespace SnowDock;
 internal sealed partial class DockSurface
 {
     public DockEdge Edge { get; set; } = DockEdge.Bottom;
-    public bool IsSide => Edge != DockEdge.Bottom;
+    /// <summary>Left or right: the dock runs down the screen.</summary>
+    public bool IsSide => Edge is DockEdge.Left or DockEdge.Right;
+    public bool IsBottom => Edge == DockEdge.Bottom;
 
     /// <summary>Length along the dock (window width for a bottom dock, height for a side dock).</summary>
     public double MainLength => IsSide ? ActualHeight : ActualWidth;
@@ -26,6 +28,8 @@ internal sealed partial class DockSurface
         DockEdge.Left => new Matrix(0, 1, -1, 0, CrossLength, 0),
         // (x, y) → (y, x): the bottom edge becomes the right edge, first item at the top.
         DockEdge.Right => new Matrix(0, 1, 1, 0, 0, 0),
+        // (x, y) → (x, C - y): the bottom edge becomes the top edge (flipped, so drawings are turned back upright).
+        DockEdge.Top => new Matrix(1, 0, 0, -1, 0, CrossLength),
         _ => Matrix.Identity
     };
 
@@ -53,7 +57,7 @@ internal sealed partial class DockSurface
     /// </summary>
     public void PushUpright(DrawingContext dc, Point center)
     {
-        if (!IsSide)
+        if (IsBottom)
         {
             dc.PushTransform(Transform.Identity);
             return;

@@ -48,7 +48,7 @@ internal sealed class ShelfStyle : DockStyle
 
     public override void DrawBackground(DrawingContext dc, DockSurface s)
     {
-        if (s.IsSide) DrawSidePanel(dc, s);
+        if (!s.IsBottom) DrawSidePanel(dc, s); // these releases went flat away from the bottom
         else DrawShelf(dc, s);
     }
 
@@ -67,7 +67,7 @@ internal sealed class ShelfStyle : DockStyle
         dc.PushOpacity(ReflectionOpacity);
         foreach (var item in s.Items)
         {
-            if (ReferenceEquals(item, s.HiddenItem)) continue;
+            if (ReferenceEquals(item, s.HiddenItem) || item.Kind == DockItemKind.Widget) continue;
             double lift = item.BounceOffset() * s.IconSize;
             dc.DrawImage(item.Reflection, new Rect(item.CenterX - item.Size / 2, s.Baseline + lift, item.Size, item.Size));
         }
@@ -79,7 +79,7 @@ internal sealed class ShelfStyle : DockStyle
         dc.DrawLine(LipBottom, new Point(s.ShelfLeft, h - 0.5), new Point(s.ShelfRight, h - 0.5));
         dc.DrawLine(FrontHighlight, new Point(s.ShelfLeft, yF), new Point(s.ShelfRight, yF));
 
-        if (!double.IsNaN(s.SeparatorX)) DrawCrosswalk(dc, s, s.SeparatorX, yF, yB, inset);
+        foreach (var sepX in s.SeparatorXs) DrawCrosswalk(dc, s, sepX, yF, yB, inset);
     }
 
     private void DrawSidePanel(DrawingContext dc, DockSurface s)
@@ -87,8 +87,8 @@ internal sealed class ShelfStyle : DockStyle
         double top = s.Baseline - s.IconSize - 9;
         var panel = new Rect(s.ShelfLeft, top, s.ShelfRight - s.ShelfLeft, s.CrossLength + 12 - top);
         dc.DrawRoundedRectangle(SidePanel, SidePanelRim, panel, 9, 9);
-        if (!double.IsNaN(s.SeparatorX))
-            dc.DrawLine(SideSeparator, new Point(s.SeparatorX, top + 6), new Point(s.SeparatorX, s.CrossLength));
+        foreach (var sepX in s.SeparatorXs)
+            dc.DrawLine(SideSeparator, new Point(sepX, top + 6), new Point(sepX, s.CrossLength));
     }
 
     private static StreamGeometry Trapezoid(double left, double right, double yFront, double yBack, double inset)

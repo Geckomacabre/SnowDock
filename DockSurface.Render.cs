@@ -43,10 +43,15 @@ internal sealed partial class DockSurface
         foreach (var item in Items.Where(i => i.IsRunning && !ReferenceEquals(i, HiddenItem)))
             Look.DrawIndicator(dc, this, item);
 
-        // ---- icons (kept upright on side docks) ----
+        // ---- icons and widgets (kept upright on side and top docks) ----
         foreach (var item in Items)
         {
             if (ReferenceEquals(item, HiddenItem)) continue;
+            if (item.Kind == DockItemKind.Widget)
+            {
+                DrawWidget(dc, item);
+                continue;
+            }
             double lift = item.BounceOffset() * s;
             var rect = new Rect(item.CenterX - item.Size / 2, Baseline - item.Size - lift, item.Size, item.Size);
             PushUpright(dc, new Point(rect.X + rect.Width / 2, rect.Y + rect.Height / 2));
@@ -62,6 +67,60 @@ internal sealed partial class DockSurface
         }
 
         if (Hovered != null && !ReferenceEquals(Hovered, LabelSuppressedFor)) DrawLabel(dc, Hovered);
+    }
+
+    /// <summary>The picker is open: widgets show a remove badge.</summary>
+    public bool EditMode { get; set; }
+
+    private Widgets.WidgetPaint? _paint;
+    private (bool Light, double Dpi) _paintKey;
+
+    /// <summary>Widget colours for the current style (light tiles on light docks).</summary>
+    public Widgets.WidgetPaint Paint
+    {
+        get
+        {
+            var key = (Look.LightTiles, VisualTreeHelper.GetDpi(this).PixelsPerDip);
+            if (_paint == null || key != _paintKey) (_paint, _paintKey) = (Widgets.WidgetPaint.For(key.LightTiles, key.PixelsPerDip), key);
+            return _paint;
+        }
+    }
+
+    private static readonly Brush BadgeFill = Frozen(new SolidColorBrush(Color.FromRgb(0x5A, 0x5A, 0x60)));
+    private static readonly Pen BadgeRim = Frozen(new Pen(Brushes.White, 1.4));
+    private static readonly Pen BadgeMinus = Frozen(new Pen(Brushes.White, 2) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round });
+
+    public Rect WidgetRect(DockItem item) =>
+        new(item.CenterX - item.Width / 2, Baseline - item.Size - item.BounceOffset() * IconSize, item.Width, item.Size);
+
+    /// <summary>The remove badge's centre in dock space (its top-left corner, as seen on screen).</summary>
+    private Point BadgeCenter(DockItem item)
+    {
+        var r = WidgetRect(item);
+        // On a top dock the tile is drawn flipped back upright, so its on-screen top-left is dock-space bottom-left.
+        return Edge == DockEdge.Top ? new Point(r.X + 3, r.Bottom - 3) : new Point(r.X + 3, r.Y + 3);
+    }
+
+    public bool HitsRemoveBadge(DockItem item, Point p)
+    {
+        var c = BadgeCenter(item);
+        return (p.X - c.X) * (p.X - c.X) + (p.Y - c.Y) * (p.Y - c.Y) <= 12 * 12;
+    }
+
+    private void DrawWidget(DrawingContext dc, DockItem item)
+    {
+        var r = WidgetRect(item);
+        PushUpright(dc, new Point(r.X + r.Width / 2, r.Y + r.Height / 2));
+        try { item.Widget!.Draw(dc, r, Paint); }
+        catch (Exception ex) { AppPaths.Log($"Widget {item.Widget?.Config.Type} draw failed: {ex.Message}"); }
+        if (ReferenceEquals(item, Pressed)) dc.DrawRoundedRectangle(PressShade, null, r, 10, 10);
+        if (EditMode)
+        {
+            var c = new Point(r.X + 3, r.Y + 3);
+            dc.DrawEllipse(BadgeFill, BadgeRim, c, 9, 9);
+            dc.DrawLine(BadgeMinus, new Point(c.X - 4.5, c.Y), new Point(c.X + 4.5, c.Y));
+        }
+        dc.Pop();
     }
 
     private void DrawLabel(DrawingContext dc, DockItem item)
@@ -88,6 +147,10 @@ internal sealed partial class DockSurface
 
         double top = Math.Max(1, iconTop - hgt - 10 - Look.LabelTail);
         double left = Math.Clamp(item.CenterX - w / 2, 2, MainLength - w - 2);
-        Look.DrawLabel(dc, text, new Rect(left, top, w, hgt), withTail: true);
+        var box = new Rect(left, top, w, hgt);
+        // A top dock is drawn flipped; turn the label back upright (its pointer would face the wrong way, so drop it).
+        PushUpright(dc, new Point(box.X + box.Width / 2, box.Y + box.Height / 2));
+        Look.DrawLabel(dc, text, box, withTail: IsBottom);
+        dc.Pop();
     }
 }

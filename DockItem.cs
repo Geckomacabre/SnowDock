@@ -6,7 +6,7 @@ using SnowDock.Native;
 
 namespace SnowDock;
 
-internal enum DockItemKind { App, Stack, RecycleBin }
+internal enum DockItemKind { App, Stack, RecycleBin, Widget }
 internal enum BounceKind { None, Launch, Attention }
 
 internal sealed class DockItem
@@ -16,6 +16,10 @@ internal sealed class DockItem
     public PinnedItem? Pin { get; set; }
     public RunningApp? Running { get; set; }
     public Stacks.StackFolder? Stack { get; init; }
+    public Widgets.DockWidget? Widget { get; init; }
+
+    /// <summary>Width along the dock at rest: one icon, or the widget's own width.</summary>
+    public double RestWidth(double icon) => Widget != null ? Math.Round(icon * Widget.WidthUnits) : icon;
 
     private BitmapSource? _icon;
     private BitmapSource? _reflection;
@@ -27,7 +31,8 @@ internal sealed class DockItem
     public bool IsRunning => Running is { Windows.Count: > 0 };
 
     // ---- per-frame layout (DIPs, window coordinates) ----
-    public double Size;       // current drawn size
+    public double Size;       // current drawn size (height; icons are square)
+    public double Width;      // current width along the dock (= Size for icons)
     public double CenterX;    // current center
     public double RestCenterX;
     /// <summary>Animated space opened before this item while another icon is dragged over it.</summary>

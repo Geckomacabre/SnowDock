@@ -9,8 +9,16 @@ namespace SnowDock;
 internal sealed partial class DockSurface : FrameworkElement
 {
     public List<DockItem> Items { get; } = new();
-    /// <summary>Index of the first item after the separator (the Recycle Bin side), or -1.</summary>
+    /// <summary>Index of the first item after the apps (widgets, or else the stacks/Recycle Bin side), or -1.</summary>
     public int SeparatorIndex { get; set; } = -1;
+    /// <summary>When widgets sit between the apps and the right-hand side: index of the first right-hand item, else -1.</summary>
+    public int RightSeparatorIndex { get; set; } = -1;
+    /// <summary>Where the separators fall this frame (dock space X).</summary>
+    public List<double> SeparatorXs { get; } = new();
+
+    private bool SeparatorBefore(int i) =>
+        (i == SeparatorIndex && SeparatorIndex > 0) ||
+        (i == RightSeparatorIndex && RightSeparatorIndex > 0 && RightSeparatorIndex != SeparatorIndex);
 
     public double IconSize { get; set; } = 52;
     public double MagnifiedSize { get; set; } = 96;
@@ -106,28 +114,38 @@ internal sealed partial class DockSurface : FrameworkElement
         int n = Items.Count;
         if (n == 0) { ShelfLeft = ShelfRight = MainLength / 2; return; }
 
-        double s = IconSize, gap = Gap;
-        double sepExtra = SeparatorIndex > 0 ? SeparatorWidth : 0;
+        double s = IconSize, gap = Gap, sepW = SeparatorWidth;
 
-        // 1. Rest layout, centered.
-        double restWidth = n * s + (n - 1) * gap + sepExtra;
+        // 1. Rest layout, centered. Icons are one icon wide; widgets have their own width.
+        double restWidth = (n - 1) * gap;
+        for (int i = 0; i < n; i++) restWidth += Items[i].RestWidth(s) + (SeparatorBefore(i) ? sepW : 0);
         double x = (MainLength - restWidth) / 2;
         var restLeft = new double[n];
         for (int i = 0; i < n; i++)
         {
-            if (i == SeparatorIndex) x += sepExtra;
+            if (SeparatorBefore(i)) x += sepW;
             restLeft[i] = x;
-            Items[i].RestCenterX = x + s / 2;
-            x += s + gap;
+            double rw = Items[i].RestWidth(s);
+            Items[i].RestCenterX = x + rw / 2;
+            x += rw + gap;
         }
 
         // 2. Magnified sizes: a cosine wave around the mouse, about 2.6 icons wide on each side.
+        //    Widgets keep their size.
         double range = s * 2.6;
         for (int i = 0; i < n; i++)
         {
-            double d = Math.Abs(LastMouseX - Items[i].RestCenterX) / range;
+            var item = Items[i];
+            if (item.Kind == DockItemKind.Widget)
+            {
+                item.Size = s;
+                item.Width = item.RestWidth(s);
+                continue;
+            }
+            double d = Math.Abs(LastMouseX - item.RestCenterX) / range;
             double wave = d >= 1 ? 0 : (Math.Cos(Math.PI * d) + 1) / 2;
-            Items[i].Size = s + (MagnifiedSize - s) * _magAmount * wave;
+            item.Size = s + (MagnifiedSize - s) * _magAmount * wave;
+            item.Width = item.Size;
         }
 
         // 3. Lay out with new sizes and any open drop gaps.
@@ -136,9 +154,9 @@ internal sealed partial class DockSurface : FrameworkElement
         for (int i = 0; i < n; i++)
         {
             x += Items[i].ExtraBefore;
-            if (i == SeparatorIndex) x += sepExtra;
+            if (SeparatorBefore(i)) x += sepW;
             newLeft[i] = x;
-            x += Items[i].Size + gap;
+            x += Items[i].Width + gap;
         }
         double newWidth = x - gap + TrailingExtra;
 
@@ -152,20 +170,21 @@ internal sealed partial class DockSurface : FrameworkElement
         {
             int k = 0;
             for (int i = 0; i < n; i++) if (LastMouseX >= restLeft[i] - gap / 2) k = i;
-            double slotRest = s + gap;
+            double slotRest = Items[k].RestWidth(s) + gap;
             double f = Math.Clamp((LastMouseX - (restLeft[k] - gap / 2)) / slotRest, 0, 1);
-            double newPos = newLeft[k] - gap / 2 + f * (Items[k].Size + gap);
+            double newPos = newLeft[k] - gap / 2 + f * (Items[k].Width + gap);
             shift = LastMouseX - newPos;
         }
 
-        for (int i = 0; i < n; i++) Items[i].CenterX = newLeft[i] + shift + Items[i].Size / 2;
+        for (int i = 0; i < n; i++) Items[i].CenterX = newLeft[i] + shift + Items[i].Width / 2;
 
-        ShelfLeft = Items[0].CenterX - Items[0].Size / 2 - Items[0].ExtraBefore - ShelfPadding;
-        ShelfRight = Items[n - 1].CenterX + Items[n - 1].Size / 2 + TrailingExtra + ShelfPadding;
-        SeparatorX = SeparatorIndex > 0
-            ? (Items[SeparatorIndex - 1].CenterX + Items[SeparatorIndex - 1].Size / 2 +
-               Items[SeparatorIndex].CenterX - Items[SeparatorIndex].Size / 2) / 2
-            : double.NaN;
+        ShelfLeft = Items[0].CenterX - Items[0].Width / 2 - Items[0].ExtraBefore - ShelfPadding;
+        ShelfRight = Items[n - 1].CenterX + Items[n - 1].Width / 2 + TrailingExtra + ShelfPadding;
+        SeparatorXs.Clear();
+        for (int i = 1; i < n; i++)
+            if (SeparatorBefore(i))
+                SeparatorXs.Add((Items[i - 1].CenterX + Items[i - 1].Width / 2 + Items[i].CenterX - Items[i].Width / 2) / 2);
+        SeparatorX = SeparatorXs.Count > 0 ? SeparatorXs[0] : double.NaN;
     }
 
     /// <summary>Item under a point (window DIPs), using the current magnified layout.</summary>
@@ -173,7 +192,7 @@ internal sealed partial class DockSurface : FrameworkElement
     {
         foreach (var item in Items)
         {
-            double half = (item.Size + Gap) / 2;
+            double half = (item.Width + Gap) / 2;
             double top = Baseline - item.Size - item.BounceOffset() * IconSize;
             if (p.X >= item.CenterX - half && p.X < item.CenterX + half && p.Y >= top - 4 && p.Y <= CrossLength)
                 return item;

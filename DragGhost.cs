@@ -195,7 +195,9 @@ internal sealed class GhostSurface : FrameworkElement
         {
             if (Icon == null) return;
             if (Dim) dc.PushOpacity(0.55);
-            dc.DrawImage(Icon, new Rect(c.X - IconSize / 2, c.Y - IconSize / 2, IconSize, IconSize));
+            // Icons are square; widget tiles keep their own width.
+            double w = IconSize * Icon.PixelWidth / Math.Max(1.0, Icon.PixelHeight);
+            dc.DrawImage(Icon, new Rect(c.X - w / 2, c.Y - IconSize / 2, w, IconSize));
             if (Dim) dc.Pop();
             return;
         }

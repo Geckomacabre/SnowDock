@@ -14,6 +14,7 @@ internal sealed partial class DockWindow
 {
     /// <summary>Snapshots: draw over a bright backdrop instead of the dark one.</summary>
     public static bool SnapshotLightBackdrop { get; set; }
+    public static bool SnapshotEditMode { get; set; }
 
     /// <summary>Set while a snapshot fakes a drag: the frame loop must not read the real mouse and drop it.</summary>
     private bool _syntheticDrag;
@@ -22,6 +23,7 @@ internal sealed partial class DockWindow
         bool drop = false, double hide = 0)
     {
         _surface.HideAmount = _surface.HideTarget = hide; // --hide 0..1: auto-hide part way
+        _surface.EditMode = SnapshotEditMode;              // --edit: show the widgets' remove badges
         _surface.LayoutItems();
         Point? ghostAt = null;
         BitmapSource? ghostIcon = null;
@@ -261,6 +263,50 @@ internal sealed partial class DockWindow
         await Task.Delay(400);
         Snap("after cheetah");
         File.WriteAllLines(outFile, lines);
+    }
+
+    /// <summary>Debug: the widget picker, rendered offscreen.</summary>
+    public void SavePickerPreview(string path)
+    {
+        var picker = new Widgets.PickerWindow(IsWidgetAdded, _ => { });
+        var content = (FrameworkElement)picker.Content;
+        picker.Content = null;
+        RenderElement(content, new Size(picker.Width, picker.Height), path);
+        picker.Close();
+    }
+
+    /// <summary>Debug: one widget's card content in a panel like the real card, rendered offscreen.</summary>
+    public void SaveCardPreview(string path, string type)
+    {
+        var info = Widgets.WidgetCatalog.Find(type);
+        if (info == null) return;
+        var widget = info.Create();
+        var paint = _surface.Paint;
+        var card = widget.BuildCard(paint);
+        if (card == null) return;
+        var panel = new StackPanel();
+        panel.Children.Add(new TextBlock { Text = widget.Title, FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = paint.Ink, Margin = new Thickness(0, 0, 0, 10) });
+        panel.Children.Add(card);
+        var border = new Border
+        {
+            Child = panel, CornerRadius = new CornerRadius(12), Padding = new Thickness(16, 12, 16, 14), Margin = new Thickness(20),
+            Background = paint.Light ? new SolidColorBrush(Color.FromArgb(245, 248, 248, 250)) : new SolidColorBrush(Color.FromArgb(240, 34, 34, 38)),
+            BorderBrush = paint.TileRim.Brush, BorderThickness = new Thickness(1)
+        };
+        System.Windows.Documents.TextElement.SetForeground(border, paint.Ink);
+        RenderElement(new Border { Background = new SolidColorBrush(Color.FromRgb(0x3A, 0x4A, 0x6A)), Child = border }, Size.Empty, path);
+    }
+
+    private static void RenderElement(FrameworkElement e, Size size, string path)
+    {
+        if (size.IsEmpty) e.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        else e.Measure(size);
+        var s = size.IsEmpty ? e.DesiredSize : size;
+        e.Arrange(new Rect(s));
+        e.UpdateLayout();
+        var rtb = new RenderTargetBitmap((int)Math.Ceiling(s.Width), (int)Math.Ceiling(s.Height), 96, 96, PixelFormats.Pbgra32);
+        rtb.Render(e);
+        Save(rtb, path);
     }
 
     private static void Save(BitmapSource bmp, string path)

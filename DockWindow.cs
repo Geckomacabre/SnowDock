@@ -49,6 +49,7 @@ internal sealed partial class DockWindow : Window
         _surface.MagnificationEnabled = config.Magnification;
         _surface.Edge = config.Edge;
         _surface.Look = Styles.DockStyles.Find(config.Style);
+        if (config.Clock24h is bool h24) Widgets.WidgetEnv.Clock24h = h24;
         RenderOptions.SetBitmapScalingMode(_surface, BitmapScalingMode.HighQuality);
         Content = _surface;
 
@@ -72,8 +73,9 @@ internal sealed partial class DockWindow : Window
             RebuildItems();
             _housekeeping.Start();
             StartAutoHide();
+            StartWidgetTimer();
             // Create the drag ghost's window now (off-screen), not in the middle of the first drag.
-            _ghost = new DragGhost(Math.Max(_surface.MagnifiedSize, _surface.IconSize * 2.4) + 24);
+            _ghost = new DragGhost(Math.Max(_surface.MagnifiedSize, _surface.IconSize * 3.4) + 24); // room for wide widget tiles
             _ghost.Show();
             _ghost.Hide();
         };
@@ -148,6 +150,12 @@ internal sealed partial class DockWindow : Window
             {
                 int right = appBar ? _appBar!.ReservedRect.Right : area.Right;
                 SetWindowPos(_hwnd, HWND_TOPMOST, right - depthPx, area.Top, depthPx, area.Height, SWP_NOACTIVATE);
+                break;
+            }
+            case DockEdge.Top:
+            {
+                int top = appBar ? _appBar!.ReservedRect.Top : area.Top;
+                SetWindowPos(_hwnd, HWND_TOPMOST, mon.Bounds.Left, top, mon.Bounds.Width, depthPx, SWP_NOACTIVATE);
                 break;
             }
             default:
@@ -270,8 +278,10 @@ internal sealed partial class DockWindow : Window
 
     private void OnLeftDown(object sender, MouseButtonEventArgs e)
     {
-        _surface.Pressed = _surface.HitItem(_surface.ToDock(e.GetPosition(_surface)));
+        var p = _surface.ToDock(e.GetPosition(_surface));
+        _surface.Pressed = _surface.HitItem(p);
         if (_surface.Pressed != null) BeginPress(_surface.Pressed);
+        else if (_surface.IsOverDock(p)) BeginDockMove(); // an empty spot: drag the whole dock to another edge
         _surface.InvalidateVisual();
     }
 
@@ -283,11 +293,14 @@ internal sealed partial class DockWindow : Window
             return;
         }
         ClearPress();
-        var item = _surface.HitItem(_surface.ToDock(e.GetPosition(_surface)));
+        var p = _surface.ToDock(e.GetPosition(_surface));
+        var item = _surface.HitItem(p);
         var pressed = _surface.Pressed;
         _surface.Pressed = null;
         _surface.InvalidateVisual();
-        if (item != null && ReferenceEquals(item, pressed)) OnItemClicked(item);
+        if (item == null || !ReferenceEquals(item, pressed)) return;
+        if (item.Kind == DockItemKind.Widget) OnWidgetClicked(item, p);
+        else OnItemClicked(item);
     }
 
     private void OnRightUp(object sender, MouseButtonEventArgs e)

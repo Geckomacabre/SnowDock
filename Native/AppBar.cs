@@ -59,12 +59,13 @@ internal sealed class AppBar : IDisposable
         if (!_registered) return;
         var mon = Monitor().Bounds;
         var abd = NewData();
-        abd.uEdge = Edge switch { DockEdge.Left => ABE_LEFT, DockEdge.Right => ABE_RIGHT, _ => ABE_BOTTOM };
+        abd.uEdge = Edge switch { DockEdge.Left => ABE_LEFT, DockEdge.Right => ABE_RIGHT, DockEdge.Top => ABE_TOP, _ => ABE_BOTTOM };
         abd.rc = mon;
         switch (Edge)
         {
             case DockEdge.Left: abd.rc.Right = mon.Left + _thicknessPx; break;
             case DockEdge.Right: abd.rc.Left = mon.Right - _thicknessPx; break;
+            case DockEdge.Top: abd.rc.Bottom = mon.Top + _thicknessPx; break;
             default: abd.rc.Top = mon.Bottom - _thicknessPx; break;
         }
         SHAppBarMessage(ABM_QUERYPOS, ref abd);
@@ -73,6 +74,7 @@ internal sealed class AppBar : IDisposable
         {
             case DockEdge.Left: abd.rc.Right = abd.rc.Left + _thicknessPx; break;
             case DockEdge.Right: abd.rc.Left = abd.rc.Right - _thicknessPx; break;
+            case DockEdge.Top: abd.rc.Bottom = abd.rc.Top + _thicknessPx; break;
             default: abd.rc.Top = abd.rc.Bottom - _thicknessPx; break;
         }
         SHAppBarMessage(ABM_SETPOS, ref abd);

@@ -21,7 +21,7 @@ internal sealed class PinnedItem
     public bool Permanent { get; set; }
 }
 
-internal enum DockEdge { Bottom, Left, Right }
+internal enum DockEdge { Bottom, Left, Right, Top }
 internal enum StackSort { DateAdded, DateModified, Name, Kind }
 internal enum StackDisplay { Stack, Folder }
 /// <summary>How a stack opens. Automatic: a fan when everything fits in one, otherwise a grid.</summary>
@@ -70,6 +70,10 @@ internal sealed class DockConfig
     public int FanMaxItems { get; set; } = 14;
     public bool AddedDefaultStacks { get; set; }
     public List<StackConfig> Stacks { get; set; } = new();
+    /// <summary>Widgets in the dock, in order (between the apps and the stacks).</summary>
+    public List<Widgets.WidgetConfig> Widgets { get; set; } = new();
+    /// <summary>24-hour clocks; empty means follow this PC's time format.</summary>
+    public bool? Clock24h { get; set; }
 
     private static readonly JsonSerializerOptions Json = new()
     {

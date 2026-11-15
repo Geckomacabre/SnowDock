@@ -130,10 +130,55 @@ internal static class DockStyles
         StyleId = "tahoe-dark", StyleName = "Tahoe (Dark)", StyleVersions = "26", Dark = true
     };
 
+    // ---- Plain themes (not tied to a Mac release) ----
+
+    private static LinearGradientBrush Gradient(Color top, Color bottom)
+    {
+        var b = new LinearGradientBrush(top, bottom, 90);
+        b.Freeze();
+        return b;
+    }
+
+    public static readonly DockStyle Black = new FlatStyle
+    {
+        StyleId = "black", StyleName = "Black", StyleVersions = "theme", Dark = true, Floating = true, RadiusFactor = 0.34,
+        Fill = Solid(232, 10, 10, 12), Rim = Line(70, 255, 255, 255, 1),
+        Dot = Solid(230, 235, 235, 240), Separator = Line(80, 255, 255, 255, 1),
+        LabelBox = Solid(240, 14, 14, 16), LabelRim = Line(70, 255, 255, 255, 1)
+    };
+
+    public static readonly DockStyle White = new FlatStyle
+    {
+        StyleId = "white", StyleName = "White", StyleVersions = "theme", Floating = true, RadiusFactor = 0.34,
+        Fill = Solid(240, 252, 252, 253), Rim = Line(45, 0, 0, 0, 1),
+        Dot = Solid(220, 30, 30, 34), Separator = Line(55, 0, 0, 0, 1),
+        LabelBox = Solid(245, 252, 252, 253), LabelRim = Line(45, 0, 0, 0, 1)
+    };
+
+    public static readonly DockStyle Midnight = new FlatStyle
+    {
+        StyleId = "midnight", StyleName = "Midnight", StyleVersions = "theme", Dark = true, Floating = true, RadiusFactor = 0.34,
+        Fill = Gradient(C(230, 24, 32, 70), C(235, 9, 12, 32)), Rim = Line(110, 120, 150, 255, 1),
+        InnerRim = Line(40, 255, 255, 255, 1),
+        Dot = Solid(235, 140, 175, 255), Separator = Line(90, 140, 165, 255, 1),
+        LabelBox = Solid(240, 18, 24, 54), LabelRim = Line(110, 120, 150, 255, 1)
+    };
+
+    /// <summary>A bright, very rounded translucent slab, like a phone's home-screen dock.</summary>
+    public static readonly DockStyle FrostedGlass = new FlatStyle
+    {
+        StyleId = "frosted-glass", StyleName = "Frosted Glass", StyleVersions = "theme", Floating = true, RadiusFactor = 0.5,
+        Fill = Gradient(C(130, 255, 255, 255), C(95, 240, 242, 248)), Rim = Line(150, 255, 255, 255, 1.2),
+        InnerRim = Line(60, 255, 255, 255, 1),
+        Dot = Solid(220, 30, 30, 34), Separator = Line(70, 0, 0, 0, 1),
+        LabelBox = Solid(220, 250, 250, 252), LabelRim = Line(120, 255, 255, 255, 1)
+    };
+
     public static IReadOnlyList<DockStyle> All { get; } = new List<DockStyle>
     {
         Cheetah, Jaguar, Leopard, SnowLeopard, MountainLion, Mavericks,
-        YosemiteLight, YosemiteDark, BigSurLight, BigSurDark, Tahoe, TahoeDark
+        YosemiteLight, YosemiteDark, BigSurLight, BigSurDark, Tahoe, TahoeDark,
+        Black, White, Midnight, FrostedGlass
     };
 
     public static DockStyle Default => SnowLeopard;
