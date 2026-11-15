@@ -39,6 +39,26 @@ dotnet publish -c Release -o publish
 Then run `publish\SnowDock.exe`. Turn on **Start SnowDock at Sign-In** from that copy, because the sign-in entry
 points at whichever exe you turn it on from.
 
+### Install and uninstall
+
+Right-click the dock and choose **Install SnowDock**, or run `SnowDock.exe --install`. This:
+- copies SnowDock to `%LocalAppData%\Programs\SnowDock` (no admin rights needed)
+- adds a Start menu shortcut
+- lists SnowDock in **Settings → Apps → Installed apps**
+
+To remove it, choose **Uninstall** there (or run `SnowDock.exe --uninstall`). This brings the taskbar back and
+removes everything except your settings in `%AppData%\SnowDock`.
+
+### Updates
+
+SnowDock checks this repository's GitHub Releases a minute after it starts and every six hours after that. When a
+newer version is out, an **Update** button appears above the dock (and in the dock menu).
+- **Installed copy:** one click downloads the release zip, swaps the files once SnowDock has closed, and starts
+  the new version.
+- **Any other copy:** the button opens the release page.
+
+Only GitHub's public releases API is contacted.
+
 ## If the taskbar doesn't come back
 
 If SnowDock is killed (Task Manager, crash, debugger stop), it can't restore the taskbar. Any one of these fixes it:
@@ -68,17 +88,57 @@ remove it.
 Drag a widget along the dock to reorder it, or drag it off to remove it. Click a widget to use it. Most open a
 card with more detail or controls; Esc or a click elsewhere closes the card.
 
+There are 96 widgets.
+
 | Category | Widgets |
 |---|---|
-| Clocks | Clock, Flip Clock, Segment Clock, Analog Clock, World Time (pick the city in its card), Date, Calendar Page, Day / Month / Year Progress |
-| Productivity | Timer, Stopwatch (with laps), Pomodoro, To-Dos, Notes |
-| System | CPU, Memory, Top CPU, Top Memory, Network, Storage, Battery, Start, Show Desktop, Notifications, Quick Settings, On-Screen Keyboard, Screenshot, Light / Dark, Keyboard Language |
+| Clocks | Clock, Flip Clock, Segment Clock, Analog Clock, Minimal Analog, World Time, World Clocks (three cities), Date, Calendar Page, 7 Days, Today, Clock & Weather, Day / Month / Year Progress |
+| Productivity | Timer, Stopwatch (with laps), Pomodoro, To-Dos, Notes, Calendar (your next event), Currency, Screen Time, Day Timeline |
+| System | Tray (your notification-area icons), CPU, Memory, Top CPU, Top Memory, Network, Storage, Temperature, Battery (five styles), Quick Toggles (Wi-Fi, Bluetooth, hotspot, airplane), Brightness, Do Not Disturb, Start, Show Desktop, Notifications, Quick Settings, On-Screen Keyboard, Screenshot, Light / Dark, Keyboard Language |
+| Media & Audio | Now Playing (full, compact, mini, bar) for whatever's playing in any app, Volume, Microphone & Sound mute |
 | Apps & Files | Search (web, or a path to open), Commands (Start-menu apps and system actions), Recently Opened |
+| Weather | Weather, Details, Forecast, Status, Hourly, Sunrise & Sunset (for a city you type; [Open-Meteo](https://open-meteo.com), no key) |
+| Stocks | Stock Chart, Stock Watchlist ([Finnhub](https://finnhub.io) key), Crypto ([Binance](https://www.binance.com) public prices, no key) |
+| Finance | 30-day revenue and a 14-day chart for Stripe, Polar, Dodo Payments, Shopify, Lemon Squeezy, Paddle and Gumroad, plus Total Revenue with a monthly goal |
+| Analytics | Plausible, DataFast, Dub, Search Console |
+| Developer | Resend, Linear, Supabase |
+| Online & Mail | GitHub notifications, GitHub Activity (contribution grid), GitHub Overview, LeetCode, Gmail |
+| Social | YouTube, Instagram, X |
 
-- **Where data lives:** to-dos and notes are saved next to the settings file (`todos.json`, `notes.json`).
+- **Where data lives:** to-dos, notes, screen time and the weather city are saved next to the settings file.
 - **Side docks:** widgets only show on top and bottom docks. A left or right dock hides them, because there's no
   room for wide tiles.
-- **Network:** none of these widgets go online.
+
+### Connecting accounts
+
+Widgets that read an online account show a sample, marked **SAMPLE**, until you connect them. Click the widget:
+its card says what to create in that service (usually a read-only key) and where to paste it.
+- **Keys stay on this PC:** they're encrypted for your Windows account (DPAPI) in `keys.json`, used only for the
+  service they belong to, and never written to the settings file or the log. **Disconnect** in the card forgets
+  a key.
+- **Gentle refreshing:** most account widgets refresh every 10 to 60 minutes. A store's revenue tile, its chart and
+  Total Revenue share one request.
+- **Your own Google client:** Gmail and Search Console need a free Google Cloud OAuth client (Desktop app). The card
+  walks you through it, and you sign in once in your browser.
+- **Paid access:** X's API is billed per request, so that widget refreshes only every two hours. Dub's analytics
+  API needs Dub's Pro plan.
+- **Resend:** it has no read-only keys, so its widget needs a full-access key.
+- **Not tested against real accounts:** every account widget follows that service's official API docs (the links
+  are in the code), but none has been run against a real account. LeetCode, Open-Meteo, Binance and the currency
+  rates were checked live.
+
+### The tray
+
+The **Tray** widget shows the icons that normally sit in the taskbar's notification area, including hidden ones.
+Click or right-click an icon as you would on the taskbar. The card lists them all.
+- **How it works:** it listens for tray icons alongside Explorer, the way open-source shells such as RetroBar do,
+  and passes every message on, so Explorer stays in sync. Nothing is injected into Explorer.
+- **Not on Windows 11:** network, volume, battery and the clock are drawn by Explorer itself, so they don't
+  appear. Use Quick Settings (Win+A) or the Quick Toggles and Volume widgets.
+- **Real mode only:** clicks only reach apps in real mode, not in `--preview`.
+- **Untested:** clicks and menus haven't been tried with real apps yet.
+
+**Not included:** AI plan-usage widgets, TikTok, and WhatsApp unread counts.
 
 ## Styles
 
@@ -179,7 +239,8 @@ Right-click an empty part of the shelf for:
   another edge (or on another monitor), and it moves there.
   - Side docks use the flat 2D look, with labels pointing into the screen.
   - Away from the bottom, stacks open as lists, since fans and the grid's pointer only work from the bottom.
-- **Show on Display N** (with more than one monitor)
+- **Show on All Displays** (with more than one display): a dock on every display, with each display's taskbar
+  hidden. Otherwise use **Show on Display N** to pick one.
 - **Start SnowDock at Sign-In** (off until you turn it on)
 - **Add Folder Stack…**, **Dock Settings…**, **Quit**
 
@@ -203,6 +264,10 @@ live Exposé run. Check these in `--preview` first:
 - [ ] Widgets…: add a clock, the CPU ring and a timer; remove one with its − badge; drag one to a new spot;
       click the timer (it starts) and the to-dos (a card opens)
 - [ ] Drag an empty spot of the dock to the top of the screen and back; try Small and Large sizes
+- [ ] In real mode, add the Tray widget: left-click and right-click Discord's or Voicemeeter's icon
+- [ ] Now Playing's buttons, the Volume widget (click, wheel), Quick Toggles and Brightness
+- [ ] Type a city into a weather widget; paste one real key (GitHub is easy) and see its SAMPLE mark go away
+- [ ] With more than one display: Show on All Displays
 - [ ] Then in real mode: the taskbar disappears, maximized windows stop short of the dock, and Win, Win+A and
       Win+N still work
 - [ ] In real mode with Hiding on: pushing the mouse against the bottom edge brings back the dock, not the Windows
@@ -250,24 +315,18 @@ SnowDock.exe --snapshot out.txt --drop-plans "a|b|c"        # what dropping thos
 SnowDock.exe --poof-preview out.png
 ```
 
-## Planned
-
-- **More widgets that need no account:** weather (for a city you pick), currency, crypto prices, LeetCode stats,
-  and media controls (Now Playing, volume, microphone).
-- **Account widgets** using a key you paste, stored encrypted on this PC and shown as samples until connected:
-  revenue (Stripe, Polar, Lemon Squeezy, Paddle, Gumroad, Shopify, Dodo), analytics (Plausible, Dub), developer
-  (GitHub, Linear, Resend, Supabase), YouTube, Instagram, DeepSeek and GLM balances, OpenCode usage.
-- **The tray** in a widget, **one dock per monitor**, and **update checks** against GitHub Releases.
-
-**Not planned:**
-- AI plan-usage tiles that work by reusing another app's or browser's sign-in.
-- Widgets whose services need paid or approved API access, or a Google sign-in app you'd register yourself:
-  X, TikTok, Gmail, Search Console.
-- WhatsApp unread counts, which need an installed-package identity.
-
 ## Known limits
 
-- **Side docks:** stacks open as lists, not fans or grids.
+- **Side docks:** stacks open as lists, not fans or grids, and widgets are hidden.
 - **Mixed scaling:** if your displays use different scaling, the dragged icon may flicker or resize when it crosses
   onto the other one.
-- **System tray:** there's no replacement for the tray (see above).
+- **Windows won't let apps switch some things:** airplane mode and Do Not Disturb. Those widgets open the
+  matching Windows panel instead.
+- **CPU temperature:** many PCs only report it to administrators, and some never do. The Temperature widget then
+  shows n/a.
+- **Stock charts:** Finnhub's free plan has no intraday history, so the stock line builds up while the dock runs.
+
+## Third-party notices
+
+The tray listener follows the approach of [ManagedShell](https://github.com/cairoshell/ManagedShell)
+(Apache-2.0). See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

@@ -13,7 +13,7 @@ internal static class ControlsFamily
             "Screen brightness with a slider for each screen, for laptop panels and monitors that accept DDC/CI.",
             () => new BrightnessWidget());
         add("do-not-disturb", "Do Not Disturb", c,
-            "Shows whether Do Not Disturb is on; Windows lets no app switch it, so a click opens the notification center where its switch is.",
+            "Opens the notification center, where Do Not Disturb's switch is (Windows lets no app flip it). The on/off it shows is a best guess.",
             () => new DoNotDisturbWidget());
     }
 }
